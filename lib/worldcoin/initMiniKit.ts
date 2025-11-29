@@ -92,6 +92,7 @@ export enum WorldVerificationLevel {
  * - accept-bond: For accepting marriage proposals (on-chain verification)
  */
 export const WORLD_ACTIONS = {
+  APP_ACCESS: 'app-access',
   PROPOSE_BOND: 'propose-bond',
   ACCEPT_BOND: 'accept-bond',
 } as const

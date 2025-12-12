@@ -7,26 +7,26 @@
 
 import { Header } from "../../components/Header";
 import { CreateProposalForm } from "../../components/marriage/CreateProposalForm";
-import { useUserDashboard } from "@/lib/worldcoin/useUserDashboard";
+import { useProposals } from "@/lib/hooks/useProposals";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function CreateProposalPage() {
-  const { dashboard, isLoading } = useUserDashboard();
+  const { hasPendingProposal, isLoading } = useProposals();
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
 
   // Check if user already has a pending proposal
   useEffect(() => {
-    if (!isLoading && dashboard) {
-      if (dashboard.hasProposal) {
+    if (!isLoading) {
+      if (hasPendingProposal) {
         // Redirect back to home if user already has a proposal
         router.replace("/home");
         return;
       }
       setShowContent(true);
     }
-  }, [dashboard, isLoading, router]);
+  }, [hasPendingProposal, isLoading, router]);
 
   // Show loading while checking
   if (isLoading || !showContent) {

@@ -6,11 +6,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
 import { UserDashboard } from "@/lib/worldcoin/useUserDashboard";
+import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
 
 type DivorceState = "idle" | "sending" | "success" | "error";
 type ClaimState = "idle" | "sending" | "success" | "error";
@@ -27,6 +28,42 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
     const [error, setError] = useState<string | null>(null);
     const [claimError, setClaimError] = useState<string | null>(null);
     const [showConfirm, setShowConfirm] = useState(false);
+
+    // Fetch detailed marriage information
+    const { marriageView, isLoading: isMarriageLoading } = useMarriageDetails(
+        dashboard.partner as `0x${string}` | null
+    );
+
+    // Calculate time together and next milestone
+    const marriageStats = useMemo(() => {
+        if (!marriageView) return null;
+
+        const bondStartDate = new Date(Number(marriageView.bondStart) * 1000);
+        const now = new Date();
+        const msInDay = 1000 * 60 * 60 * 24;
+        const msInYear = msInDay * 365.25;
+        
+        const daysTogether = Math.floor((now.getTime() - bondStartDate.getTime()) / msInDay);
+        const yearsTogether = Math.floor((now.getTime() - bondStartDate.getTime()) / msInYear);
+        
+        const lastMilestone = Number(marriageView.lastMilestoneYear);
+        const nextMilestone = lastMilestone + 1;
+        
+        // Calculate next anniversary date
+        const nextAnniversary = new Date(bondStartDate);
+        nextAnniversary.setFullYear(bondStartDate.getFullYear() + nextMilestone);
+        const daysToAnniversary = Math.ceil((nextAnniversary.getTime() - now.getTime()) / msInDay);
+
+        return {
+            bondStartDate,
+            daysTogether,
+            yearsTogether,
+            lastMilestone,
+            nextMilestone,
+            daysToAnniversary,
+            marriageId: marriageView.marriageId,
+        };
+    }, [marriageView]);
 
     const handleClaim = async () => {
         if (!dashboard.partner || !walletAddress) {
@@ -119,6 +156,11 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
                 <div className="text-center space-y-2">
                     <h2 className="text-4xl font-bold text-black">💒</h2>
                     <h3 className="text-2xl font-medium text-black">You are Married!</h3>
+                    {marriageStats && (
+                        <p className="text-sm text-gray-500">
+                            {marriageStats.daysTogether} days together
+                        </p>
+                    )}
                 </div>
 
                 {/* Partner Info */}
@@ -129,6 +171,42 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
                             {dashboard.partner.slice(0, 6)}...{dashboard.partner.slice(-4)}
                         </span>
                     </div>
+
+                    {/* Marriage Date */}
+                    {marriageStats && (
+                        <div className="flex items-center justify-between p-4 bg-pink-50 rounded-2xl">
+                            <span className="text-sm text-gray-600 font-medium">💝 Married Since</span>
+                            <span className="text-sm text-pink-900 font-medium">
+                                {marriageStats.bondStartDate.toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    year: 'numeric' 
+                                })}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Milestone Progress */}
+                    {marriageStats && marriageStats.daysToAnniversary > 0 && (
+                        <div className="p-4 bg-purple-50 rounded-2xl space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600 font-medium">
+                                    🏆 Next Milestone NFT
+                                </span>
+                                <span className="text-sm text-purple-900 font-bold">
+                                    Year {marriageStats.nextMilestone}
+                                </span>
+                            </div>
+                            {marriageStats.lastMilestone > 0 && (
+                                <p className="text-xs text-purple-700">
+                                    Current: Year {marriageStats.lastMilestone} NFT ✅
+                                </p>
+                            )}
+                            <p className="text-xs text-purple-600">
+                                {marriageStats.daysToAnniversary} days until next anniversary
+                            </p>
+                        </div>
+                    )}
 
                     {/* TIME Token Balance */}
                     <div className="p-4 bg-amber-50 rounded-2xl space-y-3">
@@ -188,7 +266,7 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
 
             {/* Additional Info Card */}
             <div className="bg-gray-50 rounded-2xl p-6 space-y-3">
-                <h4 className="text-sm font-medium text-gray-700">Marriage Benefits</h4>
+                <h4 className="text-sm font-medium text-gray-700">Marriage Details</h4>
                 <ul className="space-y-2 text-sm text-gray-600">
                     <li className="flex items-start gap-2">
                         <span>🪙</span>
@@ -202,6 +280,17 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
                         <span>🏆</span>
                         <span>Unlock milestone NFTs on anniversaries</span>
                     </li>
+                    {marriageStats && (
+                        <li className="flex items-start gap-2">
+                            <span>🔑</span>
+                            <div className="flex-1">
+                                <span className="text-xs text-gray-500">Marriage ID:</span>
+                                <p className="text-xs font-mono text-gray-700 break-all mt-1">
+                                    {marriageStats.marriageId}
+                                </p>
+                            </div>
+                        </li>
+                    )}
                 </ul>
             </div>
 

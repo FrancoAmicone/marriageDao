@@ -91,7 +91,7 @@ export default function HomePage() {
                   {address.slice(0, 6)}...{address.slice(-4)}
                 </span>
               </div>
-            )}
+              )}
 
             {/* Incoming Proposals Notifications */}
             {hasIncomingProposals && (
@@ -118,7 +118,7 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-              </div>
+            </div>
             )}
 
             {/* Outgoing Pending Proposal Alert */}

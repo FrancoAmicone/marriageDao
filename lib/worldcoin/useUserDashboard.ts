@@ -11,24 +11,14 @@ import { wagmiConfig } from '@/lib/wagmi/config';
 
 export type UserDashboard = {
     isMarried: boolean;
-    hasProposal: boolean;
     partner: `0x${string}`;
     pendingYield: bigint;
     timeBalance: bigint;
 };
 
-export type ProposalInfo = {
-    proposer: `0x${string}`;
-    proposed: `0x${string}`;
-    proposerNullifier: bigint;
-    accepted: boolean;
-    timestamp: bigint;
-};
-
 export function useUserDashboard() {
     const { address, isConnected } = useWalletAuth();
     const [dashboard, setDashboard] = useState<UserDashboard | null>(null);
-    const [proposal, setProposal] = useState<ProposalInfo | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +29,6 @@ export function useUserDashboard() {
             if (!isConnected || !address) {
                 if (!isActive) return;
                 setDashboard(null);
-                setProposal(null);
                 setError(null);
                 setIsLoading(false);
                 return;
@@ -61,21 +50,6 @@ export function useUserDashboard() {
                 if (!isActive) return;
                 setDashboard(dashboardData);
 
-                // If user has a proposal, fetch proposal details
-                if (dashboardData.hasProposal) {
-                    const proposalData = await readContract(wagmiConfig, {
-                        address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                        abi: HUMAN_BOND_ABI,
-                        functionName: 'getProposal',
-                        args: [address as `0x${string}`],
-                    }) as ProposalInfo;
-
-                    if (!isActive) return;
-                    setProposal(proposalData);
-                } else {
-                    setProposal(null);
-                }
-
             } catch (err) {
                 if (!isActive) return;
                 console.error('Error fetching user dashboard:', err);
@@ -96,14 +70,11 @@ export function useUserDashboard() {
 
     return {
         dashboard,
-        proposal,
         isLoading,
         error,
         refetch: async () => {
             if (address && isConnected) {
                 setIsLoading(true);
-                // Re-trigger the effect by updating a state
-                // For now, just manually call the logic
                 try {
                     const dashboardData = await readContract(wagmiConfig, {
                         address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
@@ -113,19 +84,6 @@ export function useUserDashboard() {
                     }) as UserDashboard;
 
                     setDashboard(dashboardData);
-
-                    if (dashboardData.hasProposal) {
-                        const proposalData = await readContract(wagmiConfig, {
-                            address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                            abi: HUMAN_BOND_ABI,
-                            functionName: 'getProposal',
-                            args: [address as `0x${string}`],
-                        }) as ProposalInfo;
-
-                        setProposal(proposalData);
-                    } else {
-                        setProposal(null);
-                    }
                 } catch (err) {
                     console.error('Error refetching dashboard:', err);
                     setError(err instanceof Error ? err.message : 'Failed to refetch');

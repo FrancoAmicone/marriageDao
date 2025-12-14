@@ -73,11 +73,32 @@ export function useVowNFT() {
                     args: [tokenId],
                 }) as string;
 
-                // Fetch Metadata from IPFS
-                // Handle ipfs:// protocol
-                const httpURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
-                const response = await fetch(httpURI);
-                const metadata = await response.json();
+                console.log('🎨 VowNFT tokenURI:', tokenURI);
+
+                // Parse metadata - VowNFT returns base64 encoded JSON
+                let metadata = {};
+                try {
+                    if (tokenURI.startsWith('data:application/json;base64,')) {
+                        // Decode base64 JSON
+                        const base64Data = tokenURI.split(',')[1];
+                        const jsonString = atob(base64Data);
+                        metadata = JSON.parse(jsonString);
+                        console.log('✅ VowNFT metadata (base64):', metadata);
+                    } else if (tokenURI.startsWith('ipfs://')) {
+                        // Fetch from IPFS
+                        const httpURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                        const response = await fetch(httpURI);
+                        metadata = await response.json();
+                        console.log('✅ VowNFT metadata (IPFS):', metadata);
+                    } else {
+                        // Try direct fetch
+                        const response = await fetch(tokenURI);
+                        metadata = await response.json();
+                        console.log('✅ VowNFT metadata (HTTP):', metadata);
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to parse VowNFT metadata:', e);
+                }
 
                 if (!isActive) return;
                 setVowNFT({

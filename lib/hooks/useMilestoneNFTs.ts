@@ -77,14 +77,31 @@ export function useMilestoneNFTs() {
                         args: [tokenId],
                     }) as string;
 
+                    console.log(`🏆 MilestoneNFT #${tokenId} tokenURI:`, tokenURI);
+
                     // Fetch Metadata
                     let metadata = {};
                     try {
-                        const httpURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
-                        const response = await fetch(httpURI);
-                        metadata = await response.json();
+                        if (tokenURI.startsWith('ipfs://')) {
+                            const httpURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
+                            console.log(`📥 Fetching from IPFS: ${httpURI}`);
+                            const response = await fetch(httpURI);
+                            metadata = await response.json();
+                            console.log(`✅ MilestoneNFT #${tokenId} metadata:`, metadata);
+                        } else if (tokenURI.startsWith('data:application/json')) {
+                            // Handle base64 encoded JSON
+                            const base64Data = tokenURI.split(',')[1];
+                            const jsonString = atob(base64Data);
+                            metadata = JSON.parse(jsonString);
+                            console.log(`✅ MilestoneNFT #${tokenId} metadata (base64):`, metadata);
+                        } else {
+                            // Try direct fetch
+                            const response = await fetch(tokenURI);
+                            metadata = await response.json();
+                            console.log(`✅ MilestoneNFT #${tokenId} metadata (HTTP):`, metadata);
+                        }
                     } catch (e) {
-                        console.warn(`Failed to fetch metadata for token ${tokenId}`, e);
+                        console.error(`❌ Failed to fetch metadata for token ${tokenId}:`, e);
                     }
 
                     fetchedMilestones.push({

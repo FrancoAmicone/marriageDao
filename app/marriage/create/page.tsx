@@ -5,7 +5,6 @@
 
 'use client'
 
-import { Header } from "../../components/Header";
 import { CreateProposalForm } from "../../components/marriage/CreateProposalForm";
 import { useProposals } from "@/lib/hooks/useProposals";
 import { useRouter } from "next/navigation";
@@ -32,7 +31,6 @@ export default function CreateProposalPage() {
   if (isLoading || !showContent) {
     return (
       <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-        <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
@@ -45,8 +43,6 @@ export default function CreateProposalPage() {
 
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-      {/* Header with logo and wallet address */}
-      <Header />
 
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6">

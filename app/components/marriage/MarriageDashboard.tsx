@@ -151,7 +151,7 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
     return (
         <div className="w-full max-w-2xl space-y-4">
             {/* Marriage Status Card */}
-            <div className="bg-white rounded-3xl p-5 mt-15 shadow-lg space-y-6">
+            <div className="bg-white rounded-3xl p-5  shadow-lg space-y-6">
                 {/* Title */}
                 <div className="text-center space-y-2">
                     <h2 className="text-4xl font-bold text-black">💒</h2>

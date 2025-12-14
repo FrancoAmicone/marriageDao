@@ -10,16 +10,16 @@ import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 
 export default function GalleryPage() {
     const router = useRouter();
-    const { vowNFT, isLoading: loadingVow } = useVowNFT();
-    const { milestones, isLoading: loadingMilestones } = useMilestoneNFTs();
+    const { vowNFT, isLoading: loadingVow, error: vowError } = useVowNFT();
+    const { milestones, isLoading: loadingMilestones, error: milestonesError } = useMilestoneNFTs();
 
     const [mintingState, setMintingState] = useState<"idle" | "sending" | "success" | "error">("idle");
-    const [error, setError] = useState<string | null>(null);
+    const [showNotAvailableModal, setShowNotAvailableModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const handleMintMilestones = async () => {
         try {
             setMintingState("sending");
-            setError(null);
 
             const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
                 transaction: [
@@ -33,58 +33,108 @@ export default function GalleryPage() {
             });
 
             if (finalPayload.status === "error") {
-                throw new Error("Transaction failed");
+                // Any error means no milestones available - show friendly modal
+                setMintingState("idle");
+                setShowNotAvailableModal(true);
+                return;
             }
 
             setMintingState("success");
-            // Ideally we would refetch here, but for now user can refresh
+            setShowSuccessModal(true);
         } catch (err) {
-            setMintingState("error");
-            setError(err instanceof Error ? err.message : "Failed to mint milestones");
+            // Any error means no milestones available - show friendly modal
+            setMintingState("idle");
+            setShowNotAvailableModal(true);
         }
     };
 
     const isLoading = loadingVow || loadingMilestones;
 
     return (
-        <main className="min-h-screen bg-gray-50 pb-20">
-            {/* Header */}
-            <div className="bg-white shadow-sm sticky top-0 z-10">
-                <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
+        <main className="min-h-screen bg-[#E8E8E8] pb-20">
+            {/* Page Header - positioned below the global fixed header */}
+            <div className="bg-[#D8D8D8]/90 backdrop-blur-sm shadow-sm sticky top-20 z-10">
+                <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
                     <button
                         onClick={() => router.push('/home')}
-                        className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        className="text-sm text-gray-600 hover:text-black transition-colors"
                     >
                         ← Back
                     </button>
-                    <h1 className="font-bold text-lg text-gray-900">Our Memories</h1>
-                    <div className="w-8" /> {/* Spacer for centering */}
+                    <h1 className="font-bold text-lg text-black">Our Memories</h1>
+                    <div className="w-16"></div> {/* Spacer for centering */}
                 </div>
             </div>
 
-            <div className="max-w-md mx-auto px-4 py-6 space-y-8">
+            <div className="max-w-2xl mx-auto px-6 py-8 space-y-8">
 
+                {/* Loading State */}
                 {isLoading ? (
-                    <div className="flex justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+                    <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-black"></div>
+                        <p className="text-sm text-gray-600">Loading your memories...</p>
                     </div>
                 ) : (
                     <>
+                        {/* Errors */}
+                        {(vowError || milestonesError) && (
+                            <div className="bg-white rounded-2xl p-4 shadow-lg border border-red-300">
+                                <div className="font-bold mb-2 text-sm text-black">Error Loading NFTs</div>
+                                {vowError && <div className="text-sm text-gray-600">Vow NFT: {vowError}</div>}
+                                {milestonesError && <div className="text-sm text-gray-600">Milestones: {milestonesError}</div>}
+                            </div>
+                        )}
+
                         {/* Vow NFT Section */}
                         <section className="space-y-4">
-                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                💍 The Vow
-                            </h2>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold text-black">💍 The Vow</h2>
+                            </div>
+                            
                             {vowNFT ? (
-                                <NFTCard
-                                    image={vowNFT.metadata?.image?.replace('ipfs://', 'https://ipfs.io/ipfs/') || ''}
-                                    name={vowNFT.metadata?.name || 'Vow NFT'}
-                                    description={vowNFT.metadata?.description}
-                                    tokenId={vowNFT.tokenId.toString()}
-                                />
+                                (() => {
+                                    // Extract marriage details from attributes
+                                    const attrs = vowNFT.metadata?.attributes || [];
+                                    const partnerA = attrs.find((a: any) => a.trait_type === 'partnerA')?.value;
+                                    const partnerB = attrs.find((a: any) => a.trait_type === 'partnerB')?.value;
+                                    const marriageDate = attrs.find((a: any) => a.trait_type === 'marriageDate')?.value;
+                                    const marriageId = attrs.find((a: any) => a.trait_type === 'marriageId')?.value;
+
+                                    // Format date if available
+                                    let formattedDate = '';
+                                    if (marriageDate) {
+                                        const date = new Date(parseInt(marriageDate) * 1000);
+                                        formattedDate = date.toLocaleDateString('en-US', {
+                                            month: 'long',
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                        });
+                                    }
+
+                                    // Create custom description
+                                    const customDescription = formattedDate 
+                                        ? `Marriage certified on ${formattedDate}. This NFT represents the verified bond between two humans.`
+                                        : vowNFT.metadata?.description;
+
+                                    return (
+                                        <NFTCard
+                                            image={vowNFT.metadata?.image?.replace('ipfs://', 'https://ipfs.io/ipfs/') || ''}
+                                            name="Marriage Certificate"
+                                            description={customDescription}
+                                            tokenId={vowNFT.tokenId.toString()}
+                                            customMetadata={{
+                                                partnerA,
+                                                partnerB,
+                                                marriageDate: formattedDate,
+                                                marriageId: marriageId?.substring(0, 10) + '...'
+                                            }}
+                                        />
+                                    );
+                                })()
                             ) : (
-                                <div className="p-6 bg-white rounded-2xl border border-dashed border-gray-300 text-center text-gray-500">
-                                    No Vow NFT found. Are you married?
+                                <div className="p-8 bg-white rounded-3xl shadow-lg text-center space-y-2">
+                                    <p className="text-gray-600">No Vow NFT found</p>
+                                    <p className="text-sm text-gray-500">You need to be married to have a Vow NFT.</p>
                                 </div>
                             )}
                         </section>
@@ -92,49 +142,46 @@ export default function GalleryPage() {
                         {/* Milestones Section */}
                         <section className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    🏆 Milestones
-                                </h2>
+                                <h2 className="text-2xl font-bold text-black">🏆 Milestones</h2>
                                 <button
                                     onClick={handleMintMilestones}
                                     disabled={mintingState === "sending"}
-                                    className="px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-full transition-colors disabled:opacity-50"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-black hover:bg-black/90 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {mintingState === "sending" ? "Checking..." : "Check & Mint"}
                                 </button>
                             </div>
 
-                            {error && (
-                                <div className="p-3 bg-red-50 text-red-700 text-sm rounded-xl">
-                                    {error}
-                                </div>
-                            )}
-
-                            {mintingState === "success" && (
-                                <div className="p-3 bg-green-50 text-green-700 text-sm rounded-xl">
-                                    Check complete! If you had pending milestones, they are being minted. Refresh in a moment.
-                                </div>
-                            )}
 
                             {milestones.length > 0 ? (
                                 <div className="grid grid-cols-2 gap-4">
-                                    {milestones.map((nft) => (
-                                        <NFTCard
-                                            key={nft.tokenId.toString()}
-                                            image={nft.metadata?.image?.replace('ipfs://', 'https://ipfs.io/ipfs/') || ''}
-                                            name={nft.metadata?.name || `Year ${nft.year}`}
-                                            description={nft.metadata?.description}
-                                            tokenId={nft.tokenId.toString()}
-                                            year={nft.year.toString()}
-                                        />
-                                    ))}
+                                    {milestones.map((nft) => {
+                                        // Extract milestone verification from attributes
+                                        const attrs = nft.metadata?.attributes || [];
+                                        const yearValue = attrs.find((a: any) => a.trait_type === 'Milestone Year')?.value;
+                                        const verification = attrs.find((a: any) => a.trait_type === 'Verification')?.value;
+                                        
+                                        // Custom name and description
+                                        const customName = `Anniversary Year ${nft.year}`;
+                                        const customDesc = nft.metadata?.description || `${yearValue} year${parseInt(yearValue) > 1 ? 's' : ''} of verified commitment`;
+
+                                        return (
+                                            <NFTCard
+                                                key={nft.tokenId.toString()}
+                                                image={nft.metadata?.image?.replace('ipfs://', 'https://ipfs.io/ipfs/') || ''}
+                                                name={customName}
+                                                description={customDesc}
+                                                tokenId={nft.tokenId.toString()}
+                                                year={nft.year.toString()}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             ) : (
-                                <div className="p-8 bg-white rounded-2xl border border-dashed border-gray-300 text-center space-y-2">
-                                    <p className="text-gray-500">No milestones yet.</p>
-                                    <p className="text-xs text-gray-400">
-                                        Milestones are earned on every anniversary.
-                                        Click "Check & Mint" to see if you're eligible!
+                                <div className="p-8 bg-white rounded-3xl shadow-lg text-center space-y-2">
+                                    <p className="text-gray-600">No milestones yet</p>
+                                    <p className="text-sm text-gray-500">
+                                        Milestones are earned on every anniversary. Click "Check & Mint" to see if you're eligible!
                                     </p>
                                 </div>
                             )}
@@ -142,6 +189,84 @@ export default function GalleryPage() {
                     </>
                 )}
             </div>
+
+            {/* Not Available Modal */}
+            {showNotAvailableModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    {/* Overlay */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setShowNotAvailableModal(false)}
+                    />
+
+                    {/* Modal */}
+                    <div className="relative bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="text-center space-y-4">
+                            {/* Icon */}
+                            <div className="text-5xl">📅</div>
+
+                            {/* Title */}
+                            <h3 className="text-xl font-bold text-black">
+                                Not Yet Available
+                            </h3>
+
+                            {/* Description */}
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Milestone NFTs are unlocked on each anniversary of your marriage. 
+                                Come back after your next anniversary to claim your milestone!
+                            </p>
+
+                            {/* Button */}
+                            <button
+                                onClick={() => setShowNotAvailableModal(false)}
+                                className="w-full mt-6 py-3 px-6 rounded-full text-sm font-medium text-white bg-black hover:bg-black/90 transition-colors"
+                            >
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Modal */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    {/* Overlay */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setShowSuccessModal(false)}
+                    />
+
+                    {/* Modal */}
+                    <div className="relative bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="text-center space-y-4">
+                            {/* Icon */}
+                            <div className="text-5xl">✨</div>
+
+                            {/* Title */}
+                            <h3 className="text-xl font-bold text-black">
+                                Milestone Unlocked!
+                            </h3>
+
+                            {/* Description */}
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Your milestone NFT is being minted. Refresh the page in a moment to see it in your gallery.
+                            </p>
+
+                            {/* Button */}
+                            <button
+                                onClick={() => {
+                                    setShowSuccessModal(false);
+                                    window.location.reload();
+                                }}
+                                className="w-full mt-6 py-3 px-6 rounded-full text-sm font-medium text-white bg-black hover:bg-black/90 transition-colors"
+                            >
+                                Refresh Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

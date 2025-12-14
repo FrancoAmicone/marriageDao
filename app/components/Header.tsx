@@ -51,8 +51,8 @@ export function Header() {
   // Don't render wallet section until mounted (prevents hydration mismatch)
   if (!mounted) {
     return (
-      <header className="fixed top-0 left-0 right-0 w-full z-50 p-6">
-        <div className="flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 w-full z-50 bg-[#E8E8E8]/90 backdrop-blur-md border-b border-black/10">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link href="/" className="inline-block">
             <Image
               src="/Isotype.png"
@@ -72,8 +72,8 @@ export function Header() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 w-full z-50 p-6">
-      <div className="flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 w-full z-50 bg-[#E8E8E8]/90 backdrop-blur-md border-b border-black/10">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo - Left */}
         <Link href="/" className="inline-block">
           <Image
@@ -119,14 +119,14 @@ export function Header() {
             </div>
           )}
         </div>
+        
+        {/* Error toast */}
+        {error && (
+          <div className="absolute top-full mt-2 right-6 px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm shadow-lg">
+            {error}
+          </div>
+        )}
       </div>
-
-      {/* Error toast */}
-      {error && (
-        <div className="absolute top-20 right-6 px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
     </header>
   );
 }

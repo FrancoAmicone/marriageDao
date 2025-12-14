@@ -6,7 +6,6 @@
 
 'use client'
 
-import { Header } from "./components/Header";
 import { WorldAppChecker } from "./components/WorldAppChecker";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -84,7 +83,6 @@ export default function Home() {
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-        <Header />
         <main className="flex-1 flex flex-col items-center justify-center px-6">
           <div className="flex flex-col items-center text-center space-y-8 max-w-2xl">
             <h1 className="text-5xl md:text-6xl font-bold text-black tracking-tight">
@@ -101,8 +99,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-      {/* Header with logo */}
-      <Header />
 
       {/* Main content - centered */}
       <main className="flex-1 flex flex-col items-center justify-center px-6">

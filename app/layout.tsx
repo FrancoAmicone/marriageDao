@@ -13,6 +13,7 @@ import { MiniKitProvider } from "@worldcoin/minikit-js/minikit-provider";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { wagmiConfig } from "@/lib/wagmi/config";
+import { Header } from "./components/Header";
 
 import "./globals.css";
 import { useState } from "react";
@@ -54,8 +55,13 @@ export default function RootLayout({
             <body
               className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-
-              {children}
+              {/* Fixed header with logo and wallet connect */}
+              <Header />
+              
+              {/* Main content with top padding to account for fixed header */}
+              <div className="pt-24">
+                {children}
+              </div>
             </body>
           </QueryClientProvider>
         </WagmiProvider>

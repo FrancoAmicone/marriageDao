@@ -42,13 +42,13 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
         const now = new Date();
         const msInDay = 1000 * 60 * 60 * 24;
         const msInYear = msInDay * 365.25;
-        
+
         const daysTogether = Math.floor((now.getTime() - bondStartDate.getTime()) / msInDay);
         const yearsTogether = Math.floor((now.getTime() - bondStartDate.getTime()) / msInYear);
-        
+
         const lastMilestone = Number(marriageView.lastMilestoneYear);
         const nextMilestone = lastMilestone + 1;
-        
+
         // Calculate next anniversary date
         const nextAnniversary = new Date(bondStartDate);
         nextAnniversary.setFullYear(bondStartDate.getFullYear() + nextMilestone);
@@ -148,6 +148,18 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
     const timeBalance = Number(dashboard.timeBalance) / 1e18;
     const pendingYield = Number(dashboard.pendingYield) / 1e18;
 
+    // Show loading state while fetching marriage details
+    if (isMarriageLoading) {
+        return (
+            <div className="w-full max-w-2xl flex items-center justify-center py-12">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+                    <p className="text-black/70">Loading marriage details...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full max-w-2xl space-y-4">
             {/* Marriage Status Card */}
@@ -177,48 +189,23 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
                         <div className="flex items-center justify-between p-4 bg-pink-50 rounded-2xl">
                             <span className="text-sm text-gray-600 font-medium">💝 Married Since</span>
                             <span className="text-sm text-pink-900 font-medium">
-                                {marriageStats.bondStartDate.toLocaleDateString('en-US', { 
-                                    month: 'short', 
-                                    day: 'numeric', 
-                                    year: 'numeric' 
+                                {marriageStats.bondStartDate.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
                                 })}
                             </span>
                         </div>
                     )}
 
-                    {/* Milestone Progress */}
-                    {marriageStats && marriageStats.daysToAnniversary > 0 && (
-                        <div className="p-4 bg-purple-50 rounded-2xl space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600 font-medium">
-                                    🏆 Next Milestone NFT
-                                </span>
-                                <span className="text-sm text-purple-900 font-bold">
-                                    Year {marriageStats.nextMilestone}
-                                </span>
-                            </div>
-                            {marriageStats.lastMilestone > 0 && (
-                                <p className="text-xs text-purple-700">
-                                    Current: Year {marriageStats.lastMilestone} NFT ✅
-                                </p>
-                            )}
-                            <p className="text-xs text-purple-600">
-                                {marriageStats.daysToAnniversary} days until next anniversary
-                            </p>
-                        </div>
-                    )}
+
 
                     {/* TIME Token Balance */}
                     <div className="p-4 bg-amber-50 rounded-2xl space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 font-medium">TIME Balance</span>
+                            <span className="text-sm text-gray-600 font-medium">TIME Savings</span>
                             <div className="text-right">
-                                <p className="text-lg font-bold text-amber-900">{timeBalance.toFixed(2)} DAY</p>
-                                {pendingYield > 0 && (
-                                    <p className="text-xs text-amber-700">
-                                        +{pendingYield.toFixed(2)} pending
-                                    </p>
-                                )}
+                                <p className="text-lg font-bold text-amber-900">{pendingYield.toFixed(2)} TIME</p>
                             </div>
                         </div>
 
@@ -263,6 +250,26 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
                     </button>
                 </div>
             </div>
+
+            {/* Next Milestone Card */}
+            {marriageStats && marriageStats.daysToAnniversary > 0 && (
+                <div className="bg-purple-50 rounded-2xl p-6 space-y-3 border-2 border-purple-200">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium text-purple-900">🏆 Next Milestone NFT</h4>
+                        <span className="text-lg font-bold text-purple-900">
+                            Year {marriageStats.nextMilestone}
+                        </span>
+                    </div>
+                    {marriageStats.lastMilestone > 0 && (
+                        <p className="text-xs text-purple-700">
+                            Current: Year {marriageStats.lastMilestone} NFT ✅
+                        </p>
+                    )}
+                    <p className="text-sm text-purple-600">
+                        {marriageStats.daysToAnniversary} days until next anniversary
+                    </p>
+                </div>
+            )}
 
             {/* Additional Info Card */}
             <div className="bg-gray-50 rounded-2xl p-6 space-y-3">

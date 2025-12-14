@@ -53,7 +53,7 @@ export default function GalleryPage() {
     return (
         <main className="min-h-screen bg-[#E8E8E8] pb-20">
             {/* Page Header - positioned below the global fixed header */}
-            <div className="bg-[#D8D8D8]/90 backdrop-blur-sm shadow-sm sticky top-20 z-10">
+            <div className="bg-[#D8D8D8]/90 backdrop-blur-sm shadow-sm sticky top-0 z-10">
                 <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
                     <button
                         onClick={() => router.push('/home')}
@@ -90,7 +90,7 @@ export default function GalleryPage() {
                             <div className="flex items-center justify-between">
                                 <h2 className="text-2xl font-bold text-black">💍 The Vow</h2>
                             </div>
-                            
+
                             {vowNFT ? (
                                 (() => {
                                     // Extract marriage details from attributes
@@ -112,7 +112,7 @@ export default function GalleryPage() {
                                     }
 
                                     // Create custom description
-                                    const customDescription = formattedDate 
+                                    const customDescription = formattedDate
                                         ? `Marriage certified on ${formattedDate}. This NFT represents the verified bond between two humans.`
                                         : vowNFT.metadata?.description;
 
@@ -160,7 +160,7 @@ export default function GalleryPage() {
                                         const attrs = nft.metadata?.attributes || [];
                                         const yearValue = attrs.find((a: any) => a.trait_type === 'Milestone Year')?.value;
                                         const verification = attrs.find((a: any) => a.trait_type === 'Verification')?.value;
-                                        
+
                                         // Custom name and description
                                         const customName = `Anniversary Year ${nft.year}`;
                                         const customDesc = nft.metadata?.description || `${yearValue} year${parseInt(yearValue) > 1 ? 's' : ''} of verified commitment`;
@@ -212,7 +212,7 @@ export default function GalleryPage() {
 
                             {/* Description */}
                             <p className="text-sm text-gray-600 leading-relaxed">
-                                Milestone NFTs are unlocked on each anniversary of your marriage. 
+                                Milestone NFTs are unlocked on each anniversary of your marriage.
                                 Come back after your next anniversary to claim your milestone!
                             </p>
 

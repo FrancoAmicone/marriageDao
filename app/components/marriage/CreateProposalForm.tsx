@@ -163,14 +163,26 @@ export function CreateProposalForm() {
       setState("success");
       setTxHash(txPayload.transaction_id || null);
 
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Proposal error:", err);
       setState("error");
-      const errorMsg = err instanceof Error ? err.message : "Something went wrong";
+      const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
       setError(errorMsg);
     }
   };
 
   const isLoading = state === "verifying" || state === "sending";
+
+  // Debug state
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLog, setDebugLog] = useState<any>(null);
+
+  // Hook into state changes to log for debug
+  useEffect(() => {
+    if (error) {
+      setDebugLog({ error, timestamp: new Date().toISOString() });
+    }
+  }, [error]);
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -222,7 +234,10 @@ export function CreateProposalForm() {
             </div>
           )}
           {error && (
-            <p className="text-center text-red-600 text-sm">{error}</p>
+            <div className="text-center space-y-2">
+              <p className="text-red-600 text-sm font-medium">Error Occurred</p>
+              <p className="text-red-600 text-xs break-all">{error}</p>
+            </div>
           )}
         </div>
 
@@ -236,6 +251,55 @@ export function CreateProposalForm() {
         </button>
       </form>
 
+      {/* Debug UI Toggle */}
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => setShowDebug(!showDebug)}
+          className="text-xs text-gray-500 underline hover:text-gray-700"
+        >
+          {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+        </button>
+      </div>
+
+      {/* Debug Info Panel */}
+      {showDebug && (
+        <div className="bg-gray-100 p-4 rounded-xl text-xs font-mono space-y-2 overflow-x-auto border border-gray-300">
+          <h3 className="font-bold text-gray-700">DEBUG INFO</h3>
+          <div>
+            <span className="font-semibold">State:</span> {state}
+          </div>
+          <div>
+            <span className="font-semibold">Is World App:</span> {isWorldApp ? "Yes" : "No"}
+          </div>
+          <div>
+            <span className="font-semibold">Wallet:</span> {walletAddress || "Not connected"}
+          </div>
+          <div>
+            <span className="font-semibold">Action:</span> {WORLD_APP_CONFIG.ACTIONS.PROPOSE_BOND}
+          </div>
+          <div>
+            <span className="font-semibold">App ID:</span> {WORLD_APP_CONFIG.APP_ID}
+          </div>
+          <div>
+            <span className="font-semibold">Contract:</span> {CONTRACT_ADDRESSES.HUMAN_BOND}
+          </div>
+          {debugLog && (
+            <div className="pt-2 border-t border-gray-200 mt-2">
+              <p className="font-semibold text-red-600">Last Error Log:</p>
+              <pre className="whitespace-pre-wrap break-all text-red-500">
+                {JSON.stringify(debugLog, null, 2)}
+              </pre>
+            </div>
+          )}
+          <div className="pt-2 border-t border-gray-200 mt-2">
+            <p className="font-semibold">MiniKit User:</p>
+            <pre className="whitespace-pre-wrap break-all text-gray-600">
+              {JSON.stringify(MiniKit.user, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
 
     </div>
   );

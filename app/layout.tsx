@@ -14,6 +14,7 @@ import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { wagmiConfig } from "@/lib/wagmi/config";
 import { Header } from "./components/Header";
+import { usePathname } from "next/navigation";
 
 import "./globals.css";
 import { useState } from "react";
@@ -44,6 +45,9 @@ export default function RootLayout({
   // Create QueryClient instance (must be in client component)
   const [queryClient] = useState(() => new QueryClient())
 
+  const pathname = usePathname();
+  const isGalleryPage = pathname === '/marriage/gallery';
+
   return (
     <html lang="en">
       {/* MiniKitProvider enables World App functionality */}
@@ -55,11 +59,11 @@ export default function RootLayout({
             <body
               className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-              {/* Fixed header with logo and wallet connect */}
-              <Header />
-              
+              {/* Fixed header with logo and wallet connect - hidden on gallery page */}
+              {!isGalleryPage && <Header />}
+
               {/* Main content with top padding to account for fixed header */}
-              <div className="pt-24">
+              <div className={isGalleryPage ? "pt-0" : "pt-24"}>
                 {children}
               </div>
             </body>

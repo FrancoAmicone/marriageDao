@@ -19,15 +19,18 @@ import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
 
 type AcceptState = "idle" | "verifying" | "sending" | "success" | "error";
 
-
-
 export function AcceptProposalForm() {
   const [proposerAddress, setProposerAddress] = useState("");
   const [state, setState] = useState<AcceptState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [isWorldApp, setIsWorldApp] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
+  const addToLog = (msg: string) => {
+    console.log(msg); // Also log to console
+    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
 
   const { walletAddress, setWalletAddress } = useAuthStore();
 
@@ -36,13 +39,17 @@ export function AcceptProposalForm() {
     const checkWorldApp = () => {
       const inWorld = isInWorldApp();
       setIsWorldApp(inWorld);
+      addToLog(`Check World App: ${inWorld}`);
 
       // Auto-update wallet address from MiniKit if available
-      if (inWorld && MiniKit.user?.walletAddress && !walletAddress) {
-        setWalletAddress(MiniKit.user.walletAddress);
+      if (inWorld && MiniKit.user?.walletAddress) {
+        addToLog(`Wallet found: ${MiniKit.user.walletAddress}`);
+        if (!walletAddress) {
+          setWalletAddress(MiniKit.user.walletAddress);
+        }
+      } else {
+        addToLog("No wallet in MiniKit.user");
       }
-
-
     };
 
     // Give MiniKit time to initialize
@@ -76,22 +83,28 @@ export function AcceptProposalForm() {
     e.preventDefault();
     setError(null);
     setTxHash(null);
+    setDebugLog([]); // Clear logs on new attempt
+
+    addToLog("Starting submission...");
 
     // Validate proposer address
     if (!proposerAddress || !/^0x[a-fA-F0-9]{40}$/.test(proposerAddress)) {
       setError("Please enter a valid Ethereum address");
+      addToLog("Invalid address format");
       return;
     }
 
     // Check if in World App
     if (!isWorldApp) {
       setError("This app must be opened in World App");
+      addToLog("Not in World App");
       return;
     }
 
     try {
       // Step 1: Verify with World ID
       setState("verifying");
+      addToLog("Verifying with World ID...");
 
       // Get the user's wallet address - this will be msg.sender in the contract
       const userWallet = MiniKit.user?.walletAddress || walletAddress;
@@ -100,7 +113,8 @@ export function AcceptProposalForm() {
         throw new Error("Wallet address not available. Please try again.");
       }
 
-
+      addToLog(`User Wallet (Signal): ${userWallet}`);
+      addToLog(`Action: ${WORLD_APP_CONFIG.ACTIONS.ACCEPT_BOND}`);
 
       // CRITICAL FIX: Signal must be the ACCEPTOR's address (msg.sender), not the proposer
       const { finalPayload: verifyPayload } = await MiniKit.commandsAsync.verify({
@@ -109,7 +123,7 @@ export function AcceptProposalForm() {
         verification_level: VerificationLevel.Orb,
       });
 
-
+      addToLog(`Verify Response: ${JSON.stringify(verifyPayload)}`);
 
       if (verifyPayload.status === "error") {
         const errPayload = verifyPayload as any;
@@ -126,10 +140,12 @@ export function AcceptProposalForm() {
       const nullifierHash = verifyPayload.nullifier_hash;
       const proofArray = decodeProof(verifyPayload.proof);
 
-
+      addToLog(`Root: ${merkleRoot}`);
+      addToLog(`Nullifier: ${nullifierHash}`);
 
       // Step 3: Send transaction via MiniKit
       setState("sending");
+      addToLog("Sending transaction...");
 
       const { finalPayload: txPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -147,7 +163,7 @@ export function AcceptProposalForm() {
         ],
       });
 
-
+      addToLog(`Tx Response: ${JSON.stringify(txPayload)}`);
 
       if (txPayload.status === "error") {
         const errPayload = txPayload as any;
@@ -163,11 +179,13 @@ export function AcceptProposalForm() {
       // Success!
       setState("success");
       setTxHash(txPayload.transaction_id || null);
+      addToLog(`Success! Tx Hash: ${txPayload.transaction_id}`);
 
     } catch (err) {
       setState("error");
       const errorMsg = err instanceof Error ? err.message : "Something went wrong";
       setError(errorMsg);
+      addToLog(`Error caught: ${errorMsg}`);
     }
   };
 
@@ -225,6 +243,20 @@ export function AcceptProposalForm() {
           {error && (
             <p className="text-center text-red-600 text-sm">{error}</p>
           )}
+
+          {/* DEBUG LOG UI */}
+          <div className="mt-4 p-2 bg-gray-100 rounded text-xs font-mono max-h-40 overflow-y-auto text-black">
+            <p className="font-bold mb-1">Debug Log:</p>
+            {debugLog.length === 0 ? (
+              <p className="text-gray-400 italic">No logs yet...</p>
+            ) : (
+              debugLog.map((log, i) => (
+                <div key={i} className="border-b border-gray-200 py-1 last:border-0">
+                  {log}
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Submit Button */}
@@ -236,8 +268,6 @@ export function AcceptProposalForm() {
           {isLoading ? "Processing..." : "Accept Proposal"}
         </button>
       </form>
-
-
     </div>
   );
 }

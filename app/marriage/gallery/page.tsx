@@ -10,7 +10,7 @@ import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 
 export default function GalleryPage() {
     const router = useRouter();
-    const { vowNFT, isLoading: loadingVow, error: vowError } = useVowNFT();
+    const { vowNFTs, isLoading: loadingVow, error: vowError } = useVowNFT();
     const { milestones, isLoading: loadingMilestones, error: milestonesError } = useMilestoneNFTs();
 
     const [mintingState, setMintingState] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -88,49 +88,59 @@ export default function GalleryPage() {
                         {/* Vow NFT Section */}
                         <section className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold text-black">💍 The Vow</h2>
+                                <h2 className="text-2xl font-bold text-black">💍 Your Vows</h2>
                             </div>
 
-                            {vowNFT ? (
-                                (() => {
-                                    // Extract marriage details from attributes
-                                    const attrs = vowNFT.metadata?.attributes || [];
-                                    const partnerA = attrs.find((a: any) => a.trait_type === 'partnerA')?.value;
-                                    const partnerB = attrs.find((a: any) => a.trait_type === 'partnerB')?.value;
-                                    const marriageDate = attrs.find((a: any) => a.trait_type === 'marriageDate')?.value;
-                                    const marriageId = attrs.find((a: any) => a.trait_type === 'marriageId')?.value;
+                            {vowNFTs.length > 0 ? (
+                                <div className="flex overflow-x-auto snap-x snap-mandatory pb-6 -mx-6 px-6 space-x-4 no-scrollbar">
+                                    {vowNFTs.map((nft, index) => {
+                                        // Extract marriage details from attributes
+                                        const attrs = nft.metadata?.attributes || [];
+                                        const partnerA = attrs.find((a: any) => a.trait_type === 'partnerA')?.value;
+                                        const partnerB = attrs.find((a: any) => a.trait_type === 'partnerB')?.value;
+                                        const marriageDate = attrs.find((a: any) => a.trait_type === 'marriageDate')?.value;
+                                        const marriageId = attrs.find((a: any) => a.trait_type === 'marriageId')?.value;
 
-                                    // Format date if available
-                                    let formattedDate = '';
-                                    if (marriageDate) {
-                                        const date = new Date(parseInt(marriageDate) * 1000);
-                                        formattedDate = date.toLocaleDateString('en-US', {
-                                            month: 'long',
-                                            day: 'numeric',
-                                            year: 'numeric'
-                                        });
-                                    }
+                                        // Format date if available
+                                        let formattedDate = '';
+                                        if (marriageDate) {
+                                            const date = new Date(parseInt(marriageDate) * 1000);
+                                            formattedDate = date.toLocaleDateString('en-US', {
+                                                month: 'long',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            });
+                                        }
 
-                                    // Create custom description
-                                    const customDescription = formattedDate
-                                        ? `Marriage certified on ${formattedDate}. This NFT represents the verified bond between two humans.`
-                                        : vowNFT.metadata?.description;
+                                        // Create custom description
+                                        const customDescription = formattedDate
+                                            ? `Marriage certified on ${formattedDate}. This NFT represents the verified bond between two humans.`
+                                            : nft.metadata?.description;
 
-                                    return (
-                                        <NFTCard
-                                            image={vowNFT.metadata?.image?.replace('ipfs://', 'https://ipfs.io/ipfs/') || ''}
-                                            name="Marriage Certificate"
-                                            description={customDescription}
-                                            tokenId={vowNFT.tokenId.toString()}
-                                            customMetadata={{
-                                                partnerA,
-                                                partnerB,
-                                                marriageDate: formattedDate,
-                                                marriageId: marriageId?.substring(0, 10) + '...'
-                                            }}
-                                        />
-                                    );
-                                })()
+                                        // Mock image for demo purposes
+                                        const MOCK_IMAGE_URL = "https://ipfs.io/ipfs/bafkreigg2jeevy3rhgzgnhk22vsbclszceos3jlzg4otuqal62vwokzwai";
+
+                                        // Add a visual indicator for the latest marriage
+                                        const isLatest = index === 0;
+
+                                        return (
+                                            <div key={nft.tokenId.toString()} className="min-w-[85%] sm:min-w-[350px] snap-center relative">
+                                                <NFTCard
+                                                    image={MOCK_IMAGE_URL}
+                                                    name={isLatest ? "Current Marriage Certificate" : "Past Marriage Certificate"}
+                                                    description={customDescription}
+                                                    tokenId={nft.tokenId.toString()}
+                                                    customMetadata={{
+                                                        partnerA,
+                                                        partnerB,
+                                                        marriageDate: formattedDate,
+                                                        marriageId: marriageId?.substring(0, 10) + '...'
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             ) : (
                                 <div className="p-8 bg-white rounded-3xl shadow-lg text-center space-y-2">
                                     <p className="text-gray-600">No Vow NFT found</p>

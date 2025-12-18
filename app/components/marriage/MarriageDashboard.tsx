@@ -202,10 +202,17 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
 
                     {/* TIME Token Balance */}
                     <div className="p-4 bg-amber-50 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 font-medium">TIME Savings</span>
+                        <div className="flex items-center justify-between border-b border-amber-200 pb-2 mb-2">
+                            <span className="text-sm text-gray-600 font-medium">Wallet Balance</span>
                             <div className="text-right">
-                                <p className="text-lg font-bold text-amber-900">{pendingYield.toFixed(2)} TIME</p>
+                                <p className="text-lg font-bold text-amber-900">{timeBalance.toFixed(2)} TIME</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600 font-medium">Pending Yield</span>
+                            <div className="text-right">
+                                <p className="text-md font-semibold text-amber-800">{pendingYield.toFixed(2)} TIME</p>
                             </div>
                         </div>
 
@@ -216,7 +223,7 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
                                 disabled={claimState === "sending"}
                                 className="w-full py-2 px-4 rounded-full text-sm font-medium text-amber-900 bg-amber-200 hover:bg-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {claimState === "sending" ? "Claiming..." : `Claim ${pendingYield.toFixed(2)} DAY`}
+                                {claimState === "sending" ? "Withdrawing..." : `Split & Withdraw ${pendingYield.toFixed(2)} TIME`}
                             </button>
                         )}
 

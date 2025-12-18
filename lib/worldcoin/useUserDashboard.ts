@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useWalletAuth } from './useWalletAuth';
-import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from '@/lib/contracts';
+import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI, TIME_TOKEN_ABI } from '@/lib/contracts';
 import { readContract } from '@wagmi/core';
 import { wagmiConfig } from '@/lib/wagmi/config';
 
@@ -39,16 +39,31 @@ export function useUserDashboard() {
                 setIsLoading(true);
                 setError(null);
 
-                // Fetch user dashboard
-                const dashboardData = await readContract(wagmiConfig, {
-                    address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                    abi: HUMAN_BOND_ABI,
-                    functionName: 'getUserDashboard',
-                    args: [address as `0x${string}`],
-                }) as UserDashboard;
+                // Fetch user dashboard and time balance in parallel
+                const [dashboardData, timeBalanceData] = await Promise.all([
+                    readContract(wagmiConfig, {
+                        address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
+                        abi: HUMAN_BOND_ABI,
+                        functionName: 'getUserDashboard',
+                        args: [address as `0x${string}`],
+                    }),
+                    readContract(wagmiConfig, {
+                        address: CONTRACT_ADDRESSES.TIME_TOKEN as `0x${string}`,
+                        abi: TIME_TOKEN_ABI,
+                        functionName: 'balanceOf',
+                        args: [address as `0x${string}`],
+                    })
+                ]);
 
                 if (!isActive) return;
-                setDashboard(dashboardData);
+
+                // Merge the data
+                const mergedDashboard: UserDashboard = {
+                    ...(dashboardData as UserDashboard),
+                    timeBalance: timeBalanceData as bigint
+                };
+
+                setDashboard(mergedDashboard);
 
             } catch (err) {
                 if (!isActive) return;
@@ -76,14 +91,27 @@ export function useUserDashboard() {
             if (address && isConnected) {
                 setIsLoading(true);
                 try {
-                    const dashboardData = await readContract(wagmiConfig, {
-                        address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                        abi: HUMAN_BOND_ABI,
-                        functionName: 'getUserDashboard',
-                        args: [address as `0x${string}`],
-                    }) as UserDashboard;
+                    const [dashboardData, timeBalanceData] = await Promise.all([
+                        readContract(wagmiConfig, {
+                            address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
+                            abi: HUMAN_BOND_ABI,
+                            functionName: 'getUserDashboard',
+                            args: [address as `0x${string}`],
+                        }),
+                        readContract(wagmiConfig, {
+                            address: CONTRACT_ADDRESSES.TIME_TOKEN as `0x${string}`,
+                            abi: TIME_TOKEN_ABI,
+                            functionName: 'balanceOf',
+                            args: [address as `0x${string}`],
+                        })
+                    ]);
 
-                    setDashboard(dashboardData);
+                    const mergedDashboard: UserDashboard = {
+                        ...(dashboardData as UserDashboard),
+                        timeBalance: timeBalanceData as bigint
+                    };
+
+                    setDashboard(mergedDashboard);
                 } catch (err) {
                     console.error('Error refetching dashboard:', err);
                     setError(err instanceof Error ? err.message : 'Failed to refetch');

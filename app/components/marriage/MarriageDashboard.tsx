@@ -6,12 +6,24 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
 import { UserDashboard } from "@/lib/worldcoin/useUserDashboard";
 import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
+import {
+    Coins,
+    TrendingUp,
+    HandHeart,
+    Calendar,
+    Image as ImageIcon,
+    Heart,
+    Clock,
+    ChevronRight,
+    Sparkles
+} from "lucide-react";
+import { MarriageView } from "@/lib/hooks/useMarriageDetails";
 
 type DivorceState = "idle" | "sending" | "success" | "error";
 type ClaimState = "idle" | "sending" | "success" | "error";
@@ -19,9 +31,16 @@ type ClaimState = "idle" | "sending" | "success" | "error";
 interface MarriageDashboardProps {
     dashboard: UserDashboard;
     onRefresh?: () => void; // Callback to refresh dashboard data
+    marriageView?: MarriageView | null;
+    isMarriageLoading?: boolean;
 }
 
-export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardProps) {
+export function MarriageDashboard({
+    dashboard,
+    onRefresh,
+    marriageView: propsMarriageView,
+    isMarriageLoading: propsIsMarriageLoading
+}: MarriageDashboardProps) {
     const { walletAddress } = useAuthStore();
     const [divorceState, setDivorceState] = useState<DivorceState>("idle");
     const [claimState, setClaimState] = useState<ClaimState>("idle");
@@ -30,15 +49,22 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
     const [showConfirm, setShowConfirm] = useState(false);
 
     // Fetch detailed marriage information
-    const { marriageView, isLoading: isMarriageLoading } = useMarriageDetails(
-        dashboard.partner as `0x${string}` | null
+    const { marriageView: internalMarriageView, isLoading: internalIsMarriageLoading } = useMarriageDetails(
+        !propsMarriageView ? (dashboard.partner as `0x${string}` | null) : null
     );
+
+    const marriageView = propsMarriageView || internalMarriageView;
+    const isMarriageLoading = propsIsMarriageLoading ?? internalIsMarriageLoading;
+
+    // Real-time interpolated pending yield
+    const [interpolatedYield, setInterpolatedYield] = useState<number>(0);
 
     // Calculate time together and next milestone
     const marriageStats = useMemo(() => {
         if (!marriageView) return null;
 
         const bondStartDate = new Date(Number(marriageView.bondStart) * 1000);
+        const lastClaimDate = new Date(Number(marriageView.lastClaim) * 1000);
         const now = new Date();
         const msInDay = 1000 * 60 * 60 * 24;
         const msInYear = msInDay * 365.25;
@@ -56,6 +82,7 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
 
         return {
             bondStartDate,
+            lastClaimDate,
             daysTogether,
             yearsTogether,
             lastMilestone,
@@ -63,6 +90,23 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
             daysToAnniversary,
             marriageId: marriageView.marriageId,
         };
+    }, [marriageView]);
+
+    // Real-time interpolation effect
+    useEffect(() => {
+        if (!marriageView) return;
+
+        const interval = setInterval(() => {
+            const now = Date.now() / 1000;
+            const lastClaim = Number(marriageView.lastClaim);
+            const secondsSinceClaim = now - lastClaim;
+
+            // 1 TIME token per day = 1 / 86400 tokens per second
+            const currentYield = Math.max(0, secondsSinceClaim * (1 / 86400));
+            setInterpolatedYield(currentYield);
+        }, 100); // Update every 100ms for smooth animation
+
+        return () => clearInterval(interval);
     }, [marriageView]);
 
     const handleClaim = async () => {
@@ -148,8 +192,8 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
     const timeBalance = Number(dashboard.timeBalance) / 1e18;
     const pendingYield = Number(dashboard.pendingYield) / 1e18;
 
-    // Show loading state while fetching marriage details
-    if (isMarriageLoading) {
+    // Show loading state while fetching marriage details - only if not handled by parent
+    if (isMarriageLoading && !propsMarriageView) {
         return (
             <div className="w-full max-w-2xl flex items-center justify-center py-12">
                 <div className="text-center">
@@ -161,223 +205,306 @@ export function MarriageDashboard({ dashboard, onRefresh }: MarriageDashboardPro
     }
 
     return (
-        <div className="w-full max-w-2xl space-y-4">
+        <div className="w-full max-w-2xl space-y-6">
             {/* Marriage Status Card */}
-            <div className="bg-white rounded-3xl p-5  shadow-lg space-y-6">
-                {/* Title */}
-                <div className="text-center space-y-2">
-                    <h2 className="text-4xl font-bold text-black">💒</h2>
-                    <h3 className="text-2xl font-medium text-black">You are Married!</h3>
+            <div className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-8 relative overflow-hidden">
+                {/* Decorative Pattern */}
+                <div className="absolute top-10 right-0 p-4 opacity-[0.03]">
+                    <Heart size={120} className="text-pink-600 rotate-12" />
+                </div>
+
+                {/* Header Section */}
+                <div className="text-center space-y-3 relative">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-pink-50 rounded-full mb-2">
+                        <Heart className="text-pink-500 fill-pink-500" size={40} />
+                    </div>
+                    <h3 className="text-3xl font-bold tracking-tight text-gray-900">You are Married!</h3>
                     {marriageStats && (
-                        <p className="text-sm text-gray-500">
-                            {marriageStats.daysTogether} days together
-                        </p>
+                        <div className="flex items-center justify-center gap-2 text-gray-500">
+                            <Calendar size={16} />
+                            <span className="text-sm font-medium">{marriageStats.daysTogether} days of shared life</span>
+                        </div>
                     )}
                 </div>
 
-                {/* Partner Info */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                        <span className="text-sm text-gray-600 font-medium">Partner</span>
-                        <span className="text-sm font-mono text-black">
-                            {dashboard.partner.slice(0, 6)}...{dashboard.partner.slice(-4)}
-                        </span>
-                    </div>
-
-                    {/* Marriage Date */}
-                    {marriageStats && (
-                        <div className="flex items-center justify-between p-4 bg-pink-50 rounded-2xl">
-                            <span className="text-sm text-gray-600 font-medium">💝 Married Since</span>
-                            <span className="text-sm text-pink-900 font-medium">
-                                {marriageStats.bondStartDate.toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                })}
-                            </span>
+                {/* Partner Info Mini Card */}
+                <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between group hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                            <HandHeart size={20} className="text-gray-400" />
                         </div>
-                    )}
-
-
-
-                    {/* TIME Token Balance */}
-                    <div className="p-4 bg-amber-50 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between border-b border-amber-200 pb-2 mb-2">
-                            <span className="text-sm text-gray-600 font-medium">Wallet Balance</span>
-                            <div className="text-right">
-                                <p className="text-lg font-bold text-amber-900">{timeBalance.toFixed(2)} TIME</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 font-medium">Pending Yield</span>
-                            <div className="text-right">
-                                <p className="text-md font-semibold text-amber-800">{pendingYield.toFixed(2)} TIME</p>
-                            </div>
-                        </div>
-
-                        {/* Claim Button */}
-                        {pendingYield > 0 && (
-                            <button
-                                onClick={handleClaim}
-                                disabled={claimState === "sending"}
-                                className="w-full py-2 px-4 rounded-full text-sm font-medium text-amber-900 bg-amber-200 hover:bg-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {claimState === "sending" ? "Withdrawing..." : `Split & Withdraw ${pendingYield.toFixed(2)} TIME`}
-                            </button>
-                        )}
-
-                        {/* Claim Success Message */}
-                        {claimState === "success" && (
-                            <p className="text-xs text-green-700 text-center">
-                                ✅ Tokens claimed! Both partners received their share.
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Partner</p>
+                            <p className="text-sm font-mono font-medium text-gray-700">
+                                {dashboard.partner.slice(0, 8)}...{dashboard.partner.slice(-6)}
                             </p>
-                        )}
-
-                        {/* Claim Error Message */}
-                        {claimError && (
-                            <p className="text-xs text-red-700 text-center">{claimError}</p>
-                        )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Divorce Section */}
-                <div className="pt-4 border-t border-gray-200 space-y-3">
+                {/* Shared Wealth Section - THE CORE REDESIGN */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Sparkles size={18} className="text-amber-500" />
+                        <h4 className="text-base font-bold text-gray-800">Shared Wealth</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {/* Wallet Balance Card */}
+                        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-5 border border-amber-100/50 shadow-sm relative overflow-hidden group">
+                            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
+                                <Coins size={100} className="text-amber-600" />
+                            </div>
+
+                            <div className="relative space-y-1">
+                                <span className="text-[11px] font-bold uppercase tracking-widest text-amber-700/70">Harvested Time</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-4xl font-black text-amber-900 tracking-tighter">
+                                        {timeBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                    <span className="text-lg font-bold text-amber-700">TIME</span>
+                                </div>
+                                <p className="text-xs text-amber-700/60 font-medium">Available in your wallet</p>
+                            </div>
+                        </div>
+
+                        {/* Growing Future Card */}
+                        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="space-y-1">
+                                    <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600">Growing Future</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-4xl font-black text-gray-900 tracking-tighter tabular-nums">
+                                            {interpolatedYield.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                                        </span>
+                                        <span className="text-lg font-bold text-gray-400">TIME</span>
+                                    </div>
+                                </div>
+                                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center animate-pulse">
+                                    <TrendingUp size={24} className="text-emerald-500" />
+                                </div>
+                            </div>
+
+                            {/* Progress Bar for the day */}
+                            <div className="space-y-2">
+                                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-linear"
+                                        style={{ width: `${(interpolatedYield % 1) * 100}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between text-[10px] font-bold text-gray-400 px-1">
+                                    <span>HARVESTING...</span>
+                                    <span>+1.00 TIME / DAY</span>
+                                </div>
+                            </div>
+
+                            {/* Withdraw Section */}
+                            {pendingYield > 0 && (
+                                <div className="mt-6 pt-6 border-t border-gray-50">
+                                    <button
+                                        onClick={handleClaim}
+                                        disabled={claimState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-white bg-gray-900 hover:bg-black transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-gray-200"
+                                    >
+                                        {claimState === "sending" ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <span>Withdrawing...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Coins size={18} />
+                                                <span>Withdraw Joint Yield</span>
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {claimState === "success" && (
+                                        <div className="mt-3 py-2 px-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                            <Sparkles size={14} className="text-emerald-500" />
+                                            <p className="text-[11px] font-semibold text-emerald-700">
+                                                Tokens claimed successfully! Divided between both partners.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {claimError && (
+                                        <p className="mt-2 text-center text-[10px] font-medium text-red-500">{claimError}</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-4 space-y-3">
                     <button
                         onClick={() => window.location.href = '/marriage/gallery'}
-                        className="w-full py-3 px-6 rounded-full text-sm font-medium text-amber-900 bg-amber-50 hover:bg-amber-100 transition-colors"
+                        className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:bg-gray-50 transition-all flex items-center justify-between group"
                     >
-                        🖼️ View Memories
+                        <div className="flex items-center gap-3">
+                            <span className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                                <ImageIcon size={18} className="text-gray-500 group-hover:text-amber-600" />
+                            </span>
+                            <span>View Memories & Gallery</span>
+                        </div>
+                        <ChevronRight size={18} className="text-gray-300" />
                     </button>
+
                     <button
                         onClick={() => setShowConfirm(true)}
-                        className="w-full py-3 px-6 rounded-full text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                        className="w-full py-3 text-xs font-bold text-red-400 hover:text-red-500 transition-colors uppercase tracking-widest h-12"
                     >
-                        End Marriage
+                        Dissolve Bond
                     </button>
                 </div>
             </div>
 
             {/* Next Milestone Card */}
-            {marriageStats && marriageStats.daysToAnniversary > 0 && (
-                <div className="bg-purple-50 rounded-2xl p-6 space-y-3 border-2 border-purple-200">
-                    <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-purple-900">🏆 Next Milestone NFT</h4>
-                        <span className="text-lg font-bold text-purple-900">
-                            Year {marriageStats.nextMilestone}
-                        </span>
+            {marriageStats && (
+                <div className="bg-[#1A1A1A] rounded-[2rem] p-6 space-y-4 relative overflow-hidden">
+                    {/* Background Glow */}
+                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/10 blur-[60px]" />
+
+                    <div className="flex items-center justify-between relative">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className="text-purple-400" size={14} />
+                                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400">Next Milestone</h4>
+                            </div>
+                            <p className="text-2xl font-black text-white">Year {marriageStats.nextMilestone} NFT</p>
+                        </div>
+                        <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+                            <Sparkles size={24} className="text-purple-300" />
+                        </div>
                     </div>
-                    {marriageStats.lastMilestone > 0 && (
-                        <p className="text-xs text-purple-700">
-                            Current: Year {marriageStats.lastMilestone} NFT ✅
-                        </p>
-                    )}
-                    <p className="text-sm text-purple-600">
-                        {marriageStats.daysToAnniversary} days until next anniversary
+
+                    <div className="space-y-3 relative">
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium text-gray-400">Time remaining</p>
+                                <p className="text-lg font-bold text-white tabular-nums">
+                                    {marriageStats.daysToAnniversary} <span className="text-gray-500 font-medium text-sm">Days</span>
+                                </p>
+                            </div>
+                            {marriageStats.lastMilestone > 0 && (
+                                <div className="text-[10px] bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full font-bold border border-emerald-500/20">
+                                    YEAR {marriageStats.lastMilestone} COLLECTED
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full"
+                                style={{ width: `${100 - (marriageStats.daysToAnniversary / 365.25 * 100)}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Additional Info Grid */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
+                    <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
+                        <Coins size={16} className="text-amber-500" />
+                    </div>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">Shared<br />1 TIME / Day</p>
+                </div>
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
+                    <div className="w-8 h-8 bg-pink-50 rounded-xl flex items-center justify-center">
+                        <Heart size={16} className="text-pink-500" />
+                    </div>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">Unique<br />Vow NFTs</p>
+                </div>
+            </div>
+
+            {/* Marriage ID Footer */}
+            {marriageStats && (
+                <div className="px-6 py-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-gray-400" />
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Marriage ID</span>
+                    </div>
+                    <p className="text-[10px] font-mono text-gray-400 truncate max-w-[150px]">
+                        {marriageStats.marriageId}
                     </p>
                 </div>
             )}
 
-            {/* Additional Info Card */}
-            <div className="bg-gray-50 rounded-2xl p-6 space-y-3">
-                <h4 className="text-sm font-medium text-gray-700">Marriage Details</h4>
-                <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-start gap-2">
-                        <span>🪙</span>
-                        <span>Earn 1 TIME token per day together</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                        <span>🎨</span>
-                        <span>Both received unique Vow NFTs</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                        <span>🏆</span>
-                        <span>Unlock milestone NFTs on anniversaries</span>
-                    </li>
-                    {marriageStats && (
-                        <li className="flex items-start gap-2">
-                            <span>🔑</span>
-                            <div className="flex-1">
-                                <span className="text-xs text-gray-500">Marriage ID:</span>
-                                <p className="text-xs font-mono text-gray-700 break-all mt-1">
-                                    {marriageStats.marriageId}
-                                </p>
-                            </div>
-                        </li>
-                    )}
-                </ul>
-            </div>
-
             {/* Divorce Confirmation Popup */}
             {showConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Overlay */}
                     <div
-                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity"
                         onClick={() => !divorceState.includes("sending") && divorceState !== "success" && setShowConfirm(false)}
                     />
 
                     {/* Modal */}
-                    <div className="relative bg-white rounded-3xl p-6 mx-4 max-w-sm w-full shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
-                        {/* Icon */}
-                        <div className="text-center">
-                            <span className="text-4xl">
-                                {divorceState === "success" ? "👋" : "💔"}
-                            </span>
+                    <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in fade-in zoom-in duration-300">
+                        {/* Status Icon */}
+                        <div className="flex justify-center">
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center ${divorceState === "success" ? "bg-emerald-50 text-emerald-500" : "bg-red-50 text-red-500"}`}>
+                                {divorceState === "success" ? <Sparkles size={40} /> : <Heart size={40} className="fill-red-500" />}
+                            </div>
                         </div>
 
-                        {/* Title */}
-                        <h3 className="text-xl font-semibold text-gray-900 text-center">
-                            {divorceState === "success" ? "Marriage Ended" : "End Marriage?"}
-                        </h3>
+                        {/* Text Content */}
+                        <div className="text-center space-y-2">
+                            <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                                {divorceState === "success" ? "Bond Dissolved" : "End the Bond?"}
+                            </h3>
 
-                        {/* Description */}
-                        {divorceState !== "success" ? (
-                            <p className="text-sm text-gray-600 text-center">
-                                Are you sure you want to end this marriage? Pending TIME tokens will be distributed to both partners.
-                            </p>
-                        ) : (
-                            <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                                <p className="text-sm text-green-800 text-center">
-                                    Marriage dissolved successfully. Tokens have been distributed.
+                            {divorceState !== "success" ? (
+                                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                    Are you sure? This will end your daily rewards and distribute all pending TIME tokens to both wallets.
                                 </p>
-                            </div>
-                        )}
+                            ) : (
+                                <p className="text-sm text-emerald-600 font-bold">
+                                    Freedom found. Your shared wealth has been harvested and distributed.
+                                </p>
+                            )}
+                        </div>
 
-                        {/* Error Message */}
+                        {/* Error State */}
                         {error && (
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                                <p className="text-sm text-red-800 text-center">{error}</p>
+                            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
+                                <p className="text-xs font-bold text-red-600 text-center uppercase tracking-wider">{error}</p>
                             </div>
                         )}
 
-                        {/* Buttons */}
-                        <div className="flex gap-3 pt-2">
+                        {/* Action Buttons */}
+                        <div className="flex flex-col gap-3 pt-2">
                             {divorceState === "success" ? (
                                 <button
                                     onClick={() => {
                                         setShowConfirm(false);
                                         if (onRefresh) onRefresh();
                                     }}
-                                    className="w-full py-3 px-4 rounded-full text-sm font-medium text-white bg-black hover:bg-gray-800 transition-colors"
+                                    className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-gray-900 hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
                                 >
-                                    Continue
+                                    Return to Home
                                 </button>
                             ) : (
                                 <>
                                     <button
-                                        onClick={() => setShowConfirm(false)}
-                                        className="flex-1 py-3 px-4 rounded-full text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                        onClick={handleDivorce}
                                         disabled={divorceState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-red-500 hover:bg-red-600 transition-all active:scale-95 shadow-lg shadow-red-200 disabled:opacity-50"
                                     >
-                                        Cancel
+                                        {divorceState === "sending" ? "Processing..." : "Confirm Dissolution"}
                                     </button>
                                     <button
-                                        onClick={handleDivorce}
-                                        className="flex-1 py-3 px-4 rounded-full text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={() => setShowConfirm(false)}
                                         disabled={divorceState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
                                     >
-                                        {divorceState === "sending" ? "Processing..." : "Confirm"}
+                                        Keep the bond
                                     </button>
                                 </>
                             )}

@@ -13,6 +13,8 @@ import { useWorldVerification } from "@/lib/worldcoin/useWorldVerification";
 import { WORLD_ACTIONS } from "@/lib/worldcoin/initMiniKit";
 import { useAuthStore } from "@/state/authStore";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
+import Image from "next/image";
+import { Sparkles, ScanFace, Globe, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -82,54 +84,77 @@ export default function Home() {
   // Don't render World App specific UI until mounted (prevents hydration mismatch)
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-        <main className="flex-1 flex flex-col items-center justify-center px-6">
-          <div className="flex flex-col items-center text-center space-y-8 max-w-2xl">
-            <h1 className="text-5xl md:text-6xl font-bold text-black tracking-tight">
-              Marriage Dao
+      <div className="min-h-screen bg-[#E8E8E8] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <div className="flex flex-col items-center text-center space-y-8 max-w-2xl relative z-10">
+          <div className="space-y-2">
+            <h1 className="text-6xl md:text-8xl font-black text-black tracking-tighter leading-[0.8]">
+              Marriage<br /><span className="text-gray-400">DAO</span>
             </h1>
-            <p className="text-2xl md:text-3xl font-light text-black/70 tracking-wide">
-              Get married On Chain
-            </p>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-
+    <div className="min-h-screen bg-[#E8E8E8] flex flex-col relative overflow-hidden">
       {/* Main content - centered */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6">
-        <div className="flex flex-col items-center text-center space-y-8 max-w-2xl">
-          {/* Title */}
-          <h1 className="text-5xl md:text-6xl font-bold text-black tracking-tight">
-            Marriage Dao
-          </h1>
+      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
+        <div className="flex flex-col items-center text-center space-y-12 max-w-sm mx-auto">
 
-          {/* Subtitle */}
-          <p className="text-2xl md:text-3xl font-light text-black/70 tracking-wide">
-            Get married On Chain
-          </p>
+          {/* Logo / Image */}
+          <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.05)] mb-4 animate-in fade-in zoom-in duration-700">
+            <Image
+              src="/Isotype.png"
+              alt="Marriage DAO Logo"
+              width={70}
+              height={70}
+              className="hover:scale-105 transition-transform"
+            />
+          </div>
 
-          {/* CTA Button - now with World ID verification */}
-          <button
-            onClick={handleGetStarted}
-            disabled={isVerifying}
-            className="mt-4 bg-black text-white px-12 py-4 rounded-full text-lg font-medium hover:bg-black/90 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isVerifying
-              ? "Verifying..."
-              : isVerified && checkVerificationExpiry()
-                ? "Continue"
-                : "Get started"}
-          </button>
+          {/* Title Section */}
+          <div className="space-y-6">
+            <h1 className="text-6xl font-black text-black tracking-tighter leading-[0.9]">
+              Marriage<br />
+              <span className="text-gray-400">DAO</span>
+            </h1>
+
+            <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-[280px] mx-auto">
+              The first protocol for eternalizing relationships on Worldchain. Verify your love, earn TIME.
+            </p>
+          </div>
+
+          {/* Action Section */}
+          <div className="w-full space-y-6">
+            <button
+              onClick={handleGetStarted}
+              disabled={isVerifying}
+              className="group w-full bg-black text-white px-8 py-5 rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-200 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isVerifying ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <ScanFace size={20} className="text-white group-hover:text-emerald-400 transition-colors" />
+                  <span>{isVerified && checkVerificationExpiry() ? "Enter Protocol" : "Verify World ID"}</span>
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              <Globe size={12} />
+              <span>Secured by Worldcoin</span>
+            </div>
+          </div>
 
           {/* Error message */}
           {(showError || error) && (
-            <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700 max-w-md">
-              <p className="text-sm">{showError || error}</p>
+            <div className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl animate-in slide-in-from-bottom-2">
+              <p className="text-xs font-bold text-red-500 text-center">{showError || error}</p>
             </div>
           )}
         </div>

@@ -14,7 +14,20 @@ import { useEffect, useState } from "react";
 import { useWalletAuth } from "@/lib/worldcoin/useWalletAuth";
 import { useUserDashboard } from "@/lib/worldcoin/useUserDashboard";
 import { useProposals } from "@/lib/hooks/useProposals";
+import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
 import { MarriageDashboard } from "../components/marriage/MarriageDashboard";
+import {
+  ShieldCheck,
+  Heart,
+  Send,
+  Copy,
+  Check,
+  Sparkles,
+  UserPlus,
+  Users,
+  Clock,
+  ArrowRight
+} from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -28,6 +41,9 @@ export default function HomePage() {
     isLoading: isProposalsLoading,
     refetch: refetchProposals
   } = useProposals();
+  const { marriageView, isLoading: isMarriageLoading } = useMarriageDetails(
+    dashboard?.partner as `0x${string}` | null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
@@ -46,11 +62,6 @@ export default function HomePage() {
   // Get marriage status from contract
   const isMarried = isConnected && (dashboard?.isMarried ?? false);
   const hasIncomingProposals = isConnected && incomingProposals.length > 0;
-
-  // Debug: Log connection state
-  useEffect(() => {
-    console.log('🔍 Home Page - Wallet State:', { isConnected, address })
-  }, [isConnected, address])
 
   /**
    * Check if user is verified before showing content
@@ -71,32 +82,40 @@ export default function HomePage() {
   }, [isVerified, checkVerificationExpiry, router]);
 
   // Show loading state while checking verification or fetching dashboard
-  if (isLoading || (isConnected && (isDashboardLoading || isProposalsLoading))) {
+  // Include isMarriageLoading only if the user is potentially married to unify animations
+  const isDataLoading = isConnected && (isDashboardLoading || isProposalsLoading || (dashboard?.isMarried && isMarriageLoading));
+
+  if (isLoading || isDataLoading) {
     return (
-      <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-black/70">Loading...</p>
+      <div className="min-h-screen bg-[#E8E8E8] flex flex-col items-center justify-center p-6">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-black/5 rounded-full" />
+          <div className="absolute top-0 left-0 w-20 h-20 border-4 border-black border-t-transparent rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Heart size={24} className="text-black/20 animate-pulse" />
           </div>
-        </main>
+        </div>
+        <p className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Synchronizing Bond Data</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
-
-      {/* Main content - centered */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6">
+      {/* Main content - centered by default, top-aligned when married for 20px gap */}
+      <main className={`flex-1 flex flex-col items-center ${isMarried ? 'justify-start pt-1' : 'justify-center py-12'} px-6`}>
         {!isMarried ? (
-          <div className="flex flex-col items-center text-center space-y-8 max-w-md w-full">
+          <div className="flex flex-col items-center text-center space-y-12 max-w-lg w-full">
             {/* Onchain Verification Badge */}
             {isConnected && address && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 border border-blue-400 rounded-full text-blue-700 text-sm">
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                <span>Verified Onchain</span>
-                <span className="text-xs opacity-70 font-mono">
+              <div className="flex items-center gap-2.5 px-5 py-2.5 bg-white shadow-sm border border-emerald-100 rounded-full text-emerald-700 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping opacity-20" />
+                  <ShieldCheck size={16} className="text-emerald-500 relative z-10" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest leading-none">Verified Human Identity</span>
+                <div className="h-3 w-px bg-emerald-100 mx-1" />
+                <span className="text-[10px] font-mono font-bold opacity-60">
                   {address.slice(0, 6)}...{address.slice(-4)}
                 </span>
               </div>
@@ -104,44 +123,50 @@ export default function HomePage() {
 
             {/* Incoming Proposals Notifications */}
             {hasIncomingProposals && (
-              <div className="w-full bg-rose-50 border-2 border-rose-300 rounded-2xl p-6 space-y-3 shadow-lg">
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl">💝</span>
-                  <h3 className="text-xl font-medium text-rose-900">
-                    {incomingProposals.length} Proposal{incomingProposals.length > 1 ? 's' : ''} Received!
-                  </h3>
+              <div className="w-full bg-white rounded-[2.5rem] p-8 space-y-6 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-rose-50 animate-in zoom-in duration-500">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
+                      <Heart size={24} className="fill-rose-500" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                        {incomingProposals.length} Proposal{incomingProposals.length > 1 ? 's' : ''} Received
+                      </h3>
+                      <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Someone chose you</p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-rose-800 font-medium">
-                  Someone wants to marry you! Check the proposals below.
-                </p>
-                <div className="space-y-2 mt-4">
+
+                <div className="space-y-3">
                   {incomingProposals.map((proposal, index) => (
-                    <div key={index} className="bg-white p-3 rounded-lg border border-rose-200">
-                      <p className="text-xs text-rose-600 font-semibold mb-1">From:</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-mono text-rose-900 break-all flex-1">
-                          {proposal.proposer}
-                        </p>
+                    <div key={index} className="group relative bg-gray-50/50 hover:bg-rose-50/50 rounded-2xl p-4 transition-all duration-300 border border-transparent hover:border-rose-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-gray-400 group-hover:text-rose-400 transition-colors">
+                          <UserPlus size={18} />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Proposer Address</p>
+                          <p className="text-[11px] font-mono font-bold text-gray-900 truncate">
+                            {proposal.proposer}
+                          </p>
+                        </div>
                         <button
                           onClick={() => copyToClipboard(proposal.proposer)}
-                          className="flex-shrink-0 p-1.5 hover:bg-rose-100 rounded-md transition-colors duration-200 group relative"
-                          title="Copy address"
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white hover:bg-rose-500 group-hover:shadow-md transition-all active:scale-90 text-gray-400 hover:text-white"
                         >
-                          {copiedAddress === proposal.proposer ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-600 group-hover:text-rose-900" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                            </svg>
-                          )}
+                          {copiedAddress === proposal.proposer ? <Check size={16} /> : <Copy size={16} />}
                         </button>
                       </div>
-                      <p className="text-xs text-rose-500 mt-2">
-                        {new Date(Number(proposal.timestamp) * 1000).toLocaleDateString()}
-                      </p>
+                      <div className="mt-3 pt-3 border-t border-gray-100/50 flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase">
+                          <Clock size={10} />
+                          {new Date(Number(proposal.timestamp) * 1000).toLocaleDateString()}
+                        </div>
+                        <Link href="/marriage/accept" className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+                          Review <ArrowRight size={10} />
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -150,91 +175,111 @@ export default function HomePage() {
 
             {/* Outgoing Pending Proposal Alert */}
             {hasPendingProposal && outgoingProposal && (
-              <div className="w-full bg-amber-50 border border-amber-300 rounded-2xl p-6 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">💍</span>
-                  <h3 className="text-lg font-medium text-amber-900">Pending Proposal</h3>
+              <div className="w-full bg-[#1A1A1A] rounded-[2.5rem] p-8 space-y-6 shadow-2xl relative overflow-hidden animate-in zoom-in duration-500">
+                {/* Decoration */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 blur-[50px]" />
+
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-amber-500">
+                    <Send size={24} />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-lg font-black text-white tracking-tight">Proposal Sent</h3>
+                    <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest">Waiting for response</p>
+                  </div>
                 </div>
-                <p className="text-sm text-amber-800">
-                  You have already proposed to:
-                </p>
-                <div className="flex items-center gap-2 bg-amber-100 p-2 rounded-lg">
-                  <p className="text-xs font-mono text-amber-900 break-all flex-1">
-                    {outgoingProposal.proposed}
-                  </p>
+
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 relative z-10">
+                  <div className="flex-1 text-left">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">To partner</p>
+                    <p className="text-[11px] font-mono font-bold text-amber-100 truncate">
+                      {outgoingProposal.proposed}
+                    </p>
+                  </div>
                   <button
                     onClick={() => copyToClipboard(outgoingProposal.proposed)}
-                    className="flex-shrink-0 p-1.5 hover:bg-amber-200 rounded-md transition-colors duration-200 group relative"
-                    title="Copy address"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white text-gray-400 hover:text-black transition-all"
                   >
-                    {copiedAddress === outgoingProposal.proposed ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-700 group-hover:text-amber-900" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                        <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                      </svg>
-                    )}
+                    {copiedAddress === outgoingProposal.proposed ? <Check size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
-                <p className="text-xs text-amber-700">
-                  Waiting for them to accept your proposal. You cannot make another proposal until this one is resolved.
+
+                <p className="text-[10px] text-gray-500 font-medium leading-relaxed relative z-10 text-left px-1">
+                  Your proposal is active on Worldchain. You cannot issue another until this one is accepted or canceled.
                 </p>
               </div>
             )}
 
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-normal text-black tracking-tight">
-              {hasPendingProposal ? "Proposal Sent!" : hasIncomingProposals ? "You Have Proposals!" : "Time to get Married"}
-            </h1>
-
-            {/* Button Container - Only show if wallet is connected */}
-            {isConnected ? (
-              <div className="bg-[#C4C4C4] rounded-3xl p-8 w-full space-y-4">
-                {/* Make a Proposal Button */}
+            {/* Hero Section */}
+            <div className="space-y-4">
+              <h1 className="text-5xl md:text-7xl font-black text-gray-900 tracking-tighter leading-[0.9] flex flex-col">
                 {hasPendingProposal ? (
-                  <div className="w-full bg-gray-400 text-white px-8 py-4 rounded-full text-lg font-normal opacity-50 cursor-not-allowed text-center">
-                    Make a Proposal
+                  <span className="text-amber-500">Shared Destiny.</span>
+                ) : hasIncomingProposals ? (
+                  <span className="text-rose-500">Your Turn.</span>
+                ) : (
+                  <>
+                    <span>Human</span>
+                    <span className="text-pink-600">Bond.</span>
+                  </>
+                )}
+              </h1>
+              <p className="text-sm text-gray-500 font-medium max-w-[280px] mx-auto leading-relaxed">
+                Certify your commitment on-chain. <br />Verified, eternal, and shared.
+              </p>
+            </div>
+
+            {/* Main Action Buttons */}
+            {isConnected ? (
+              <div className="w-full flex flex-col gap-4">
+                {hasPendingProposal ? (
+                  <div className="w-full px-8 py-5 rounded-2xl bg-gray-100 text-gray-400 text-xs font-black uppercase tracking-[0.2em] cursor-not-allowed border border-gray-200">
+                    Proposal in Progress
                   </div>
                 ) : (
                   <Link
                     href="/marriage/create"
-                    className="block w-full bg-black text-white px-8 py-4 rounded-full text-lg font-normal hover:bg-black/90 transition-all duration-200"
+                    className="group w-full bg-black text-white px-8 py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-200 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0"
                   >
-                    Make a Proposal
+                    <span>Make a Proposal</span>
+                    <Sparkles size={16} className="text-amber-400 group-hover:rotate-12 transition-transform" />
                   </Link>
                 )}
 
-                {/* Accept a Proposal Button with notification badge */}
                 <Link
                   href="/marriage/accept"
-                  className="block w-full bg-black text-white px-8 py-4 rounded-full text-lg font-normal hover:bg-black/90 transition-all duration-200 relative"
+                  className="w-full bg-white text-black px-8 py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] border border-gray-100 hover:bg-gray-50 transition-all duration-300 shadow-sm flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 relative"
                 >
-                  Accept a Proposal
+                  <Users size={16} className="text-gray-400" />
+                  <span>Accept a Proposal</span>
                   {hasIncomingProposals && (
-                    <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-bounce">
+                    <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-black rounded-full h-6 w-6 flex items-center justify-center shadow-lg shadow-rose-200">
                       {incomingProposals.length}
                     </span>
                   )}
                 </Link>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-4">
-                <p className="text-black/60 text-base">
-                  Connect your wallet to continue
-                </p>
-                <p className="text-black/40 text-sm">
-                  👆 Use the button in the top right
+              <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-gray-300 shadow-sm mb-2">
+                  <Clock size={24} />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
+                  Connection Required to Proceed
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center text-center">
-            {/* Marriage Dashboard */}
-            {dashboard && isConnected && <MarriageDashboard dashboard={dashboard} onRefresh={refetch} />}
+          <div className="w-full max-w-lg mx-auto">
+            {dashboard && isConnected && (
+              <MarriageDashboard
+                dashboard={dashboard}
+                onRefresh={refetch}
+                marriageView={marriageView}
+                isMarriageLoading={isMarriageLoading}
+              />
+            )}
           </div>
         )}
       </main>

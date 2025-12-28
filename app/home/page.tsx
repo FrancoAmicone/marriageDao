@@ -103,7 +103,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
       {/* Main content - centered by default, top-aligned when married for 20px gap */}
-      <main className={`flex-1 flex flex-col items-center ${isMarried ? 'justify-start pt-1' : 'justify-center py-12'} px-6`}>
+      <main className={`flex-1 flex flex-col items-center justify-start px-6`}>
         {!isMarried ? (
           <div className="flex flex-col items-center text-center space-y-12 max-w-lg w-full">
             {/* Onchain Verification Badge */}
@@ -126,8 +126,8 @@ export default function HomePage() {
               <div className="w-full bg-white rounded-[2.5rem] p-8 space-y-6 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-rose-50 animate-in zoom-in duration-500">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
-                      <Heart size={24} className="fill-rose-500" />
+                    <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-rose-200">
+                      <Heart size={24} className="fill-white" />
                     </div>
                     <div className="text-left">
                       <h3 className="text-lg font-black text-gray-900 tracking-tight">
@@ -142,18 +142,18 @@ export default function HomePage() {
                   {incomingProposals.map((proposal, index) => (
                     <div key={index} className="group relative bg-gray-50/50 hover:bg-rose-50/50 rounded-2xl p-4 transition-all duration-300 border border-transparent hover:border-rose-100">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-gray-400 group-hover:text-rose-400 transition-colors">
+                        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center shadow-sm text-white group-hover:bg-rose-500 transition-colors">
                           <UserPlus size={18} />
                         </div>
-                        <div className="flex-1 text-left">
+                        <div className="flex-1 text-left min-w-0 w-0">
                           <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Proposer Address</p>
-                          <p className="text-[11px] font-mono font-bold text-gray-900 truncate">
+                          <p className="text-[11px] font-mono font-bold text-gray-900 truncate overflow-hidden">
                             {proposal.proposer}
                           </p>
                         </div>
                         <button
                           onClick={() => copyToClipboard(proposal.proposer)}
-                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white hover:bg-rose-500 group-hover:shadow-md transition-all active:scale-90 text-gray-400 hover:text-white"
+                          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white hover:bg-rose-500 group-hover:shadow-md transition-all active:scale-90 text-gray-400 hover:text-white"
                         >
                           {copiedAddress === proposal.proposer ? <Check size={16} /> : <Copy size={16} />}
                         </button>
@@ -180,8 +180,8 @@ export default function HomePage() {
                 <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 blur-[50px]" />
 
                 <div className="flex items-center gap-3 relative z-10">
-                  <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-amber-500">
-                    <Send size={24} />
+                  <div className="w-12 h-12 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center text-white">
+                    <Send size={24} className="fill-white" />
                   </div>
                   <div className="text-left">
                     <h3 className="text-lg font-black text-white tracking-tight">Proposal Sent</h3>
@@ -190,15 +190,15 @@ export default function HomePage() {
                 </div>
 
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 relative z-10">
-                  <div className="flex-1 text-left">
+                  <div className="flex-1 text-left min-w-0 w-0">
                     <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">To partner</p>
-                    <p className="text-[11px] font-mono font-bold text-amber-100 truncate">
+                    <p className="text-[11px] font-mono font-bold text-amber-100 truncate overflow-hidden">
                       {outgoingProposal.proposed}
                     </p>
                   </div>
                   <button
                     onClick={() => copyToClipboard(outgoingProposal.proposed)}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white text-gray-400 hover:text-black transition-all"
+                    className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white text-gray-400 hover:text-black transition-all"
                   >
                     {copiedAddress === outgoingProposal.proposed ? <Check size={16} /> : <Copy size={16} />}
                   </button>
@@ -214,13 +214,13 @@ export default function HomePage() {
             <div className="space-y-4">
               <h1 className="text-5xl md:text-7xl font-black text-gray-900 tracking-tighter leading-[0.9] flex flex-col">
                 {hasPendingProposal ? (
-                  <span className="text-amber-500">Shared Destiny.</span>
+                  <span className="text-gray-9As00">Shared Destiny.</span>
                 ) : hasIncomingProposals ? (
                   <span className="text-rose-500">Your Turn.</span>
                 ) : (
                   <>
                     <span>Human</span>
-                    <span className="text-pink-600">Bond.</span>
+                    <span className="text-balck-600">Bond.</span>
                   </>
                 )}
               </h1>
@@ -242,7 +242,7 @@ export default function HomePage() {
                     className="group w-full bg-black text-white px-8 py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-200 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0"
                   >
                     <span>Make a Proposal</span>
-                    <Sparkles size={16} className="text-amber-400 group-hover:rotate-12 transition-transform" />
+                    <Sparkles size={16} className="text-white group-hover:rotate-12 transition-transform" />
                   </Link>
                 )}
 

@@ -16,6 +16,8 @@ import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI, WORLD_APP_CONFIG } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
+import { Heart, ScanFace, Globe, Users } from "lucide-react";
+import { PrenupModal } from "./PrenupModal";
 
 type AcceptState = "idle" | "verifying" | "sending" | "success" | "error";
 
@@ -25,12 +27,7 @@ export function AcceptProposalForm() {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [isWorldApp, setIsWorldApp] = useState(false);
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-
-  const addToLog = (msg: string) => {
-    console.log(msg); // Also log to console
-    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
-  };
+  const [showPrenup, setShowPrenup] = useState(false);
 
   const { walletAddress, setWalletAddress } = useAuthStore();
 
@@ -39,16 +36,10 @@ export function AcceptProposalForm() {
     const checkWorldApp = () => {
       const inWorld = isInWorldApp();
       setIsWorldApp(inWorld);
-      addToLog(`Check World App: ${inWorld}`);
 
       // Auto-update wallet address from MiniKit if available
-      if (inWorld && MiniKit.user?.walletAddress) {
-        addToLog(`Wallet found: ${MiniKit.user.walletAddress}`);
-        if (!walletAddress) {
-          setWalletAddress(MiniKit.user.walletAddress);
-        }
-      } else {
-        addToLog("No wallet in MiniKit.user");
+      if (inWorld && MiniKit.user?.walletAddress && !walletAddress) {
+        setWalletAddress(MiniKit.user.walletAddress);
       }
     };
 
@@ -59,94 +50,70 @@ export function AcceptProposalForm() {
 
   /**
    * Decode World ID proof string to uint256[8] array
-   * The proof comes as a packed hex string from World ID
    */
   const decodeProof = (proof: string): [string, string, string, string, string, string, string, string] => {
-    // Remove 0x prefix if present
     const cleanProof = proof.startsWith("0x") ? proof.slice(2) : proof;
-
-    // Each uint256 is 64 hex chars (32 bytes)
     const proofArray: string[] = [];
     for (let i = 0; i < 8; i++) {
       const chunk = cleanProof.slice(i * 64, (i + 1) * 64);
       proofArray.push(BigInt("0x" + chunk).toString());
     }
-
     return proofArray as [string, string, string, string, string, string, string, string];
   };
 
   /**
-   * Main flow: Verify with World ID → Send Transaction
-   * NO SIWE or backend API needed - verification is on-chain
+   * Step 1: Handle initial form submission
    */
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setTxHash(null);
-    setDebugLog([]); // Clear logs on new attempt
-
-    addToLog("Starting submission...");
 
     // Validate proposer address
     if (!proposerAddress || !/^0x[a-fA-F0-9]{40}$/.test(proposerAddress)) {
       setError("Please enter a valid Ethereum address");
-      addToLog("Invalid address format");
       return;
     }
 
-    // Check if in World App
     if (!isWorldApp) {
       setError("This app must be opened in World App");
-      addToLog("Not in World App");
       return;
     }
 
-    try {
-      // Step 1: Verify with World ID
-      setState("verifying");
-      addToLog("Verifying with World ID...");
+    // Show prenup modal before proceeding
+    setShowPrenup(true);
+  };
 
-      // Get the user's wallet address - this will be msg.sender in the contract
+  /**
+   * Step 2: Main flow after prenup confirmation: Verify with World ID → Send Transaction
+   */
+  const handlePrenupConfirm = async () => {
+    setShowPrenup(false);
+
+    try {
+      setState("verifying");
       const userWallet = MiniKit.user?.walletAddress || walletAddress;
 
       if (!userWallet) {
         throw new Error("Wallet address not available. Please try again.");
       }
 
-      addToLog(`User Wallet (Signal): ${userWallet}`);
-      addToLog(`Action: ${WORLD_APP_CONFIG.ACTIONS.ACCEPT_BOND}`);
-
-      // CRITICAL FIX: Signal must be the ACCEPTOR's address (msg.sender), not the proposer
       const { finalPayload: verifyPayload } = await MiniKit.commandsAsync.verify({
         action: WORLD_APP_CONFIG.ACTIONS.ACCEPT_BOND,
-        signal: userWallet, // ✅ FIXED: Must be acceptor's wallet (msg.sender)
+        signal: userWallet,
         verification_level: VerificationLevel.Orb,
       });
-
-      addToLog(`Verify Response: ${JSON.stringify(verifyPayload)}`);
 
       if (verifyPayload.status === "error") {
         const errPayload = verifyPayload as any;
         throw new Error(`Verification error: ${errPayload.error_code || "cancelled"}`);
       }
 
-      // Update wallet address from MiniKit
-      if (MiniKit.user?.walletAddress) {
-        setWalletAddress(MiniKit.user.walletAddress);
-      }
-
-      // Step 2: Extract proof data
       const merkleRoot = verifyPayload.merkle_root;
       const nullifierHash = verifyPayload.nullifier_hash;
       const proofArray = decodeProof(verifyPayload.proof);
 
-      addToLog(`Root: ${merkleRoot}`);
-      addToLog(`Nullifier: ${nullifierHash}`);
-
-      // Step 3: Send transaction via MiniKit
       setState("sending");
-      addToLog("Sending transaction...");
-
       const { finalPayload: txPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
@@ -163,111 +130,128 @@ export function AcceptProposalForm() {
         ],
       });
 
-      addToLog(`Tx Response: ${JSON.stringify(txPayload)}`);
-
       if (txPayload.status === "error") {
         const errPayload = txPayload as any;
         const errorMsg = errPayload.error_code || errPayload.message || "Unknown error";
         throw new Error(`Transaction failed: ${errorMsg}`);
       }
 
-      // Update wallet address after transaction
-      if (MiniKit.user?.walletAddress && !walletAddress) {
-        setWalletAddress(MiniKit.user.walletAddress);
-      }
-
-      // Success!
       setState("success");
       setTxHash(txPayload.transaction_id || null);
-      addToLog(`Success! Tx Hash: ${txPayload.transaction_id}`);
 
     } catch (err) {
       setState("error");
       const errorMsg = err instanceof Error ? err.message : "Something went wrong";
       setError(errorMsg);
-      addToLog(`Error caught: ${errorMsg}`);
     }
   };
 
   const isLoading = state === "verifying" || state === "sending";
 
   return (
-    <div className="w-full max-w-md space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Container with title and input */}
-        <div className="bg-[#C4C4C4] rounded-3xl p-8 space-y-6">
-          {/* Title */}
-          <h1 className="text-3xl md:text-4xl font-normal text-black text-center">
-            Accept a proposal
-          </h1>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-white rounded-[2.5rem] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-black/[0.03] space-y-8 animate-in fade-in zoom-in duration-500">
 
-          {/* Connected Wallet Display */}
-          {walletAddress && (
-            <div className="text-center text-xs text-black/50">
-              Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+        {/* Header Section */}
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 bg-black rounded-3xl flex items-center justify-center shadow-lg transform rotate-3">
+            <Users size={32} className="text-white" fill="white" />
+          </div>
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-black text-black tracking-tighter">
+              Accept Bond
+            </h1>
+            <p className="text-sm font-medium text-gray-400">
+              Confirm your union on-chain
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">
+                Proposer Address
+              </label>
+              <input
+                type="text"
+                value={proposerAddress}
+                onChange={(e) => setProposerAddress(e.target.value)}
+                placeholder="0x..."
+                className="w-full px-6 py-5 rounded-3xl bg-gray-50 text-black text-base font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-black/5 border border-transparent focus:border-black/5 transition-all"
+                disabled={isLoading}
+              />
             </div>
-          )}
 
-          {/* Address Input */}
-          <input
-            type="text"
-            value={proposerAddress}
-            onChange={(e) => setProposerAddress(e.target.value)}
-            placeholder="Address who proposed to you (0x...)"
-            className="w-full px-6 py-4 rounded-full bg-white text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-black/20"
-            disabled={isLoading}
-          />
+            {/* Connected Info */}
+            {walletAddress && (
+              <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                  Signer: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                </span>
+              </div>
+            )}
+          </div>
 
-          {/* Status Messages */}
-          {state === "verifying" && (
-            <p className="text-center text-black/70">Verifying with World ID...</p>
-          )}
-          {state === "sending" && (
-            <p className="text-center text-black/70">Sending transaction...</p>
-          )}
+          <button
+            type="submit"
+            className="group w-full bg-black text-white px-8 py-5 rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-100 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!proposerAddress || isLoading || !isWorldApp}
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Confirming...</span>
+              </>
+            ) : (
+              <>
+                <ScanFace size={20} className="group-hover:text-rose-400 transition-colors" />
+                <span>Accept Proposal</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Status Messages */}
+        <div className="space-y-4">
           {state === "success" && (
-            <div className="text-center space-y-2">
-              <p className="text-green-700 font-medium">Proposal accepted! 💒 You are now bonded!</p>
+            <div className="p-6 bg-rose-50 border border-rose-100 rounded-[2rem] text-center space-y-3 animate-in fade-in slide-in-from-bottom-4">
+              <div className="w-10 h-10 bg-rose-500 rounded-full mx-auto flex items-center justify-center shadow-lg shadow-rose-200">
+                <Heart size={20} className="text-white" fill="white" />
+              </div>
+              <p className="text-sm font-black text-rose-900 tracking-tight">Bond Accepted Successfully!</p>
               {txHash && (
                 <a
                   href={`https://worldscan.org/tx/${txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-600 underline"
+                  className="inline-block text-[10px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-700 transition-colors"
                 >
-                  View on WorldScan
+                  View on WorldScan →
                 </a>
               )}
             </div>
           )}
+
           {error && (
-            <p className="text-center text-red-600 text-sm">{error}</p>
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl animate-in fade-in slide-in-from-bottom-2">
+              <p className="text-[10px] font-bold text-red-500 text-center uppercase tracking-widest leading-relaxed">
+                {error}
+              </p>
+            </div>
           )}
-
-          {/* DEBUG LOG UI */}
-          <div className="mt-4 p-2 bg-gray-100 rounded text-xs font-mono max-h-40 overflow-y-auto text-black">
-            <p className="font-bold mb-1">Debug Log:</p>
-            {debugLog.length === 0 ? (
-              <p className="text-gray-400 italic">No logs yet...</p>
-            ) : (
-              debugLog.map((log, i) => (
-                <div key={i} className="border-b border-gray-200 py-1 last:border-0">
-                  {log}
-                </div>
-              ))
-            )}
-          </div>
         </div>
+      </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="w-full bg-black text-white px-8 py-4 rounded-full text-lg font-normal hover:bg-black/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!proposerAddress || isLoading || !isWorldApp}
-        >
-          {isLoading ? "Processing..." : "Accept Proposal"}
-        </button>
-      </form>
+      {/* Prenup Agreement Modal */}
+      <PrenupModal
+        isOpen={showPrenup}
+        onClose={() => setShowPrenup(false)}
+        onConfirm={handlePrenupConfirm}
+        title="Binding Prenuptial Agreement"
+      />
     </div>
   );
 }
+

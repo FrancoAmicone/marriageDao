@@ -10,7 +10,7 @@ export default function AcceptProposalPage() {
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6">
+      <main className="flex-1 flex flex-col items-center justify-start px-6">
         <AcceptProposalForm />
       </main>
     </div>

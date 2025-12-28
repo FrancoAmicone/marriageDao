@@ -62,8 +62,8 @@ export default function RootLayout({
               {/* Fixed header with logo and wallet connect - hidden on gallery page */}
               {!isGalleryPage && <Header />}
 
-              {/* Main content with top padding to account for fixed header */}
-              <div className={isGalleryPage ? "pt-0" : "pt-24"}>
+              {/* Main content with top padding to account for fixed header (80px + 40px gap) */}
+              <div className={isGalleryPage ? "pt-0" : "pt-[160px]"}>
                 {children}
               </div>
             </body>

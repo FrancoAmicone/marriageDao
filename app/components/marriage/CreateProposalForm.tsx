@@ -16,8 +16,11 @@ import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI, WORLD_APP_CONFIG } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
-import { Sparkles, ScanFace, Calculator } from "lucide-react";
-import { PrenupModal } from "./PrenupModal";
+import { Sparkles, ScanFace } from "lucide-react";
+import { decodeProof } from "@/lib/utils/decodeProof";
+import dynamic from "next/dynamic";
+
+const PrenupModal = dynamic(() => import("./PrenupModal").then(m => m.PrenupModal), { ssr: false });
 
 type ProposalState = "idle" | "verifying" | "sending" | "success" | "error";
 
@@ -47,19 +50,6 @@ export function CreateProposalForm() {
     const timer = setTimeout(checkWorldApp, 300);
     return () => clearTimeout(timer);
   }, [walletAddress, setWalletAddress]);
-
-  /**
-   * Decode World ID proof string to uint256[8] array
-   */
-  const decodeProof = (proof: string): [string, string, string, string, string, string, string, string] => {
-    const cleanProof = proof.startsWith("0x") ? proof.slice(2) : proof;
-    const proofArray: string[] = [];
-    for (let i = 0; i < 8; i++) {
-      const chunk = cleanProof.slice(i * 64, (i + 1) * 64);
-      proofArray.push(BigInt("0x" + chunk).toString());
-    }
-    return proofArray as [string, string, string, string, string, string, string, string];
-  };
 
   /**
    * Step 1: Handle initial form submission

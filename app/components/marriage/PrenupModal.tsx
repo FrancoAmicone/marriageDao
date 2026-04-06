@@ -1,6 +1,35 @@
 'use client'
 
-import { ShieldCheck, Scale, Users, Coins, Heart, X } from "lucide-react";
+import { ShieldCheck, Scale, Users, Coins, Heart } from "lucide-react";
+import { type ReactNode } from "react";
+
+const PRENUP_POINTS: { icon: ReactNode; title: string; description: string }[] = [
+    {
+        icon: <Coins size={20} className="text-amber-500" />,
+        title: "Assets & Property",
+        description: "Division of all property and assets will be shared 50/50."
+    },
+    {
+        icon: <Scale size={20} className="text-emerald-500" />,
+        title: "Common Income",
+        description: "All income generated during the bond is considered common capital."
+    },
+    {
+        icon: <Users size={20} className="text-blue-500" />,
+        title: "Shared Decisions",
+        description: "Major life and financial decisions must be made by unanimous agreement."
+    },
+    {
+        icon: <Heart size={20} className="text-rose-500" />,
+        title: "Mutual Separation",
+        description: "In case of dissolution, all accumulated wealth is divided equally (50/50)."
+    },
+    {
+        icon: <ShieldCheck size={20} className="text-purple-500" />,
+        title: "Fair Arbitration",
+        description: "Irreconcilable disputes will be settled via neutral third-party arbitration."
+    }
+];
 
 interface PrenupModalProps {
     isOpen: boolean;
@@ -11,34 +40,6 @@ interface PrenupModalProps {
 
 export function PrenupModal({ isOpen, onClose, onConfirm, title = "Prenuptial Agreement" }: PrenupModalProps) {
     if (!isOpen) return null;
-
-    const points = [
-        {
-            icon: <Coins size={20} className="text-amber-500" />,
-            title: "Assets & Property",
-            description: "Division of all property and assets will be shared 50/50."
-        },
-        {
-            icon: <Scale size={20} className="text-emerald-500" />,
-            title: "Common Income",
-            description: "All income generated during the bond is considered common capital."
-        },
-        {
-            icon: <Users size={20} className="text-blue-500" />,
-            title: "Shared Decisions",
-            description: "Major life and financial decisions must be made by unanimous agreement."
-        },
-        {
-            icon: <Heart size={20} className="text-rose-500" />,
-            title: "Mutual Separation",
-            description: "In case of dissolution, all accumulated wealth is divided equally (50/50)."
-        },
-        {
-            icon: <ShieldCheck size={20} className="text-purple-500" />,
-            title: "Fair Arbitration",
-            description: "Irreconcilable disputes will be settled via neutral third-party arbitration."
-        }
-    ];
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -65,7 +66,7 @@ export function PrenupModal({ isOpen, onClose, onConfirm, title = "Prenuptial Ag
 
                 {/* Content */}
                 <div className="px-6 space-y-4 max-h-[50vh] overflow-y-auto py-4 custom-scrollbar">
-                    {points.map((point, index) => (
+                    {PRENUP_POINTS.map((point, index) => (
                         <div key={index} className="flex gap-3 group">
                             <div className="w-8 h-8 shrink-0 bg-gray-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                                 {point.icon}

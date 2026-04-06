@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useWalletAuth } from '@/lib/worldcoin/useWalletAuth';
 import { CONTRACT_ADDRESSES, MILESTONE_NFT_ABI } from '@/lib/contracts';
-import { readContract } from '@wagmi/core';
+import { readContract, getPublicClient } from '@wagmi/core';
 import { wagmiConfig } from '@/lib/wagmi/config';
-import { getPublicClient } from '@wagmi/core';
 import { parseAbiItem } from 'viem';
+import { parseTokenMetadata } from '@/lib/utils/parseTokenMetadata';
 
 export type MilestoneNFTData = {
     tokenId: bigint;
@@ -13,137 +13,71 @@ export type MilestoneNFTData = {
     metadata: any;
 };
 
+async function fetchSingleMilestone(tokenId: bigint): Promise<MilestoneNFTData> {
+    const contractAddr = CONTRACT_ADDRESSES.MILESTONE_NFT as `0x${string}`;
+
+    const [year, tokenURI] = await Promise.all([
+        readContract(wagmiConfig, {
+            address: contractAddr,
+            abi: MILESTONE_NFT_ABI,
+            functionName: 'tokenYear',
+            args: [tokenId],
+        }) as Promise<bigint>,
+        readContract(wagmiConfig, {
+            address: contractAddr,
+            abi: MILESTONE_NFT_ABI,
+            functionName: 'tokenURI',
+            args: [tokenId],
+        }) as Promise<string>,
+    ]);
+
+    let metadata = {};
+    try {
+        metadata = await parseTokenMetadata(tokenURI);
+    } catch (e) {
+        console.error(`Failed to fetch metadata for milestone token ${tokenId}:`, e);
+    }
+
+    return { tokenId, year, tokenURI, metadata };
+}
+
+async function fetchAllMilestones(address: `0x${string}`): Promise<MilestoneNFTData[]> {
+    const publicClient = getPublicClient(wagmiConfig);
+
+    const logs = await publicClient.getLogs({
+        address: CONTRACT_ADDRESSES.MILESTONE_NFT as `0x${string}`,
+        event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'),
+        args: {
+            to: address,
+            from: '0x0000000000000000000000000000000000000000',
+        },
+        fromBlock: 'earliest',
+    });
+
+    if (logs.length === 0) return [];
+
+    const tokenIds = logs
+        .map(log => log.args.tokenId)
+        .filter((id): id is bigint => id !== undefined);
+
+    const milestones = await Promise.all(tokenIds.map(fetchSingleMilestone));
+    milestones.sort((a, b) => Number(b.year - a.year));
+    return milestones;
+}
+
 export function useMilestoneNFTs() {
     const { address, isConnected } = useWalletAuth();
-    const [milestones, setMilestones] = useState<MilestoneNFTData[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        let isActive = true;
-
-        async function fetchMilestones() {
-            if (!isConnected || !address) {
-                if (!isActive) return;
-                setMilestones([]);
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                if (!isActive) return;
-                setIsLoading(true);
-                setError(null);
-
-                const publicClient = getPublicClient(wagmiConfig);
-
-                // Find Transfer events to the user
-                const logs = await publicClient.getLogs({
-                    address: CONTRACT_ADDRESSES.MILESTONE_NFT as `0x${string}`,
-                    event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'),
-                    args: {
-                        to: address as `0x${string}`,
-                        from: '0x0000000000000000000000000000000000000000',
-                    },
-                    fromBlock: 'earliest',
-                });
-
-                if (logs.length === 0) {
-                    if (!isActive) return;
-                    setMilestones([]);
-                    setIsLoading(false);
-                    return;
-                }
-
-                const fetchedMilestones: MilestoneNFTData[] = [];
-
-                for (const log of logs) {
-                    const tokenId = log.args.tokenId;
-                    if (tokenId === undefined) continue;
-
-                    // Get Year
-                    const year = await readContract(wagmiConfig, {
-                        address: CONTRACT_ADDRESSES.MILESTONE_NFT as `0x${string}`,
-                        abi: MILESTONE_NFT_ABI,
-                        functionName: 'tokenYear',
-                        args: [tokenId],
-                    }) as bigint;
-
-                    // Get Token URI
-                    const tokenURI = await readContract(wagmiConfig, {
-                        address: CONTRACT_ADDRESSES.MILESTONE_NFT as `0x${string}`,
-                        abi: MILESTONE_NFT_ABI,
-                        functionName: 'tokenURI',
-                        args: [tokenId],
-                    }) as string;
-
-                    console.log(`🏆 MilestoneNFT #${tokenId} tokenURI:`, tokenURI);
-
-                    // Fetch Metadata
-                    let metadata = {};
-                    try {
-                        if (tokenURI.startsWith('ipfs://')) {
-                            const httpURI = tokenURI.replace('ipfs://', 'https://ipfs.io/ipfs/');
-                            console.log(`📥 Fetching from IPFS: ${httpURI}`);
-                            const response = await fetch(httpURI);
-                            metadata = await response.json();
-                            console.log(`✅ MilestoneNFT #${tokenId} metadata:`, metadata);
-                        } else if (tokenURI.startsWith('data:application/json')) {
-                            // Handle base64 encoded JSON
-                            const base64Data = tokenURI.split(',')[1];
-                            const jsonString = atob(base64Data);
-                            metadata = JSON.parse(jsonString);
-                            console.log(`✅ MilestoneNFT #${tokenId} metadata (base64):`, metadata);
-                        } else {
-                            // Try direct fetch
-                            const response = await fetch(tokenURI);
-                            metadata = await response.json();
-                            console.log(`✅ MilestoneNFT #${tokenId} metadata (HTTP):`, metadata);
-                        }
-                    } catch (e) {
-                        console.error(`❌ Failed to fetch metadata for token ${tokenId}:`, e);
-                    }
-
-                    fetchedMilestones.push({
-                        tokenId,
-                        year,
-                        tokenURI,
-                        metadata
-                    });
-                }
-
-                if (!isActive) return;
-                // Sort by year descending
-                fetchedMilestones.sort((a, b) => Number(b.year - a.year));
-                setMilestones(fetchedMilestones);
-
-            } catch (err) {
-                if (!isActive) return;
-                console.error('Error fetching Milestone NFTs:', err);
-                setError(err instanceof Error ? err.message : 'Failed to fetch Milestone NFTs');
-            } finally {
-                if (isActive) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        fetchMilestones();
-
-        return () => {
-            isActive = false;
-        };
-    }, [address, isConnected]);
+    const { data, isLoading, error } = useQuery({
+        queryKey: ['milestoneNFTs', address],
+        queryFn: () => fetchAllMilestones(address as `0x${string}`),
+        enabled: isConnected && !!address,
+        staleTime: 60_000,
+    });
 
     return {
-        milestones,
+        milestones: data ?? [],
         isLoading,
-        error,
-        refetch: async () => {
-            // Simple refetch logic (re-run the effect by forcing a state update or just copying the logic)
-            // For now, we rely on the effect. To force refetch, we could expose a function that toggles a dependency.
-            // But for simplicity, I'll just leave it as is or implement if needed.
-            // Let's implement a simple refetch trigger if needed, but for now the user can just refresh.
-        }
+        error: error ? (error instanceof Error ? error.message : 'Failed to fetch Milestone NFTs') : null,
     };
 }

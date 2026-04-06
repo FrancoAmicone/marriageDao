@@ -1,5 +1,5 @@
 /**
- * Purpose: Home page for Marriage DAO (Protected Route)
+ * Purpose: Home page for HumanBond (Protected Route)
  * Shows two options: Make a Proposal or Accept a Proposal
  * If user is already married, shows "You are already married" message
  * Requires World ID verification to access
@@ -15,7 +15,6 @@ import { useWalletAuth } from "@/lib/worldcoin/useWalletAuth";
 import { useUserDashboard } from "@/lib/worldcoin/useUserDashboard";
 import { useProposals } from "@/lib/hooks/useProposals";
 import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
-import { MarriageDashboard } from "../components/marriage/MarriageDashboard";
 import {
   ShieldCheck,
   Heart,
@@ -28,6 +27,12 @@ import {
   Clock,
   ArrowRight
 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const MarriageDashboard = dynamic(
+  () => import("../components/marriage/MarriageDashboard").then(m => m.MarriageDashboard),
+  { ssr: false }
+);
 
 export default function HomePage() {
   const router = useRouter();

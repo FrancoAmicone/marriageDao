@@ -100,7 +100,7 @@ export const useWalletAuth = () => {
         requestId: '0',
         expirationTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         notBefore: new Date(Date.now() - 60 * 1000), // 1 minute ago
-        statement: 'Connect to Marriage DAO',
+        statement: 'Connect to HumanBond',
       })
 
       // Check if user cancelled or error occurred

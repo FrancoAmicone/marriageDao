@@ -1,20 +1,26 @@
 /**
- * Purpose: Homepage for Marriage DAO
+ * Purpose: Homepage for HumanBond
  * Landing page with World ID verification before accessing the app
  * Users must verify as human before proceeding
  */
 
 'use client'
 
-import { WorldAppChecker } from "./components/WorldAppChecker";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useWorldVerification } from "@/lib/worldcoin/useWorldVerification";
 import { WORLD_ACTIONS } from "@/lib/worldcoin/initMiniKit";
 import { useAuthStore } from "@/state/authStore";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
 import Image from "next/image";
-import { Sparkles, ScanFace, Globe, ArrowRight } from "lucide-react";
+import { ScanFace, Globe } from "lucide-react";
+import { useHydrated } from "@/lib/hooks/useHydrated";
+import dynamic from "next/dynamic";
+
+const WorldAppChecker = dynamic(
+  () => import("./components/WorldAppChecker").then(m => m.WorldAppChecker),
+  { ssr: false }
+);
 
 export default function Home() {
   const router = useRouter();
@@ -22,15 +28,7 @@ export default function Home() {
   const { setVerified, isVerified, checkVerificationExpiry } = useAuthStore();
   const [showError, setShowError] = useState<string | null>(null);
   const [showWorldAppDialog, setShowWorldAppDialog] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  /**
-   * Mark component as mounted
-   * We don't auto-redirect, let the user click the button
-   */
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useHydrated();
 
   /**
    * Handle "Get started" button click
@@ -88,7 +86,7 @@ export default function Home() {
         <div className="flex flex-col items-center text-center space-y-8 max-w-2xl relative z-10">
           <div className="space-y-2">
             <h1 className="text-6xl md:text-8xl font-black text-black tracking-tighter leading-[0.8]">
-              Marriage<br /><span className="text-gray-400">DAO</span>
+              Human<br /><span className="text-gray-400">Bond</span>
             </h1>
           </div>
         </div>
@@ -106,18 +104,19 @@ export default function Home() {
           <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.05)] mb-4 animate-in fade-in zoom-in duration-700">
             <Image
               src="/Isotype.png"
-              alt="Marriage DAO Logo"
+              alt="HumanBond Logo"
               width={70}
               height={70}
               className="hover:scale-105 transition-transform"
+              style={{ width: "auto", height: "auto" }}
             />
           </div>
 
           {/* Title Section */}
           <div className="space-y-6">
             <h1 className="text-6xl font-black text-black tracking-tighter leading-[0.9]">
-              Marriage<br />
-              <span className="text-gray-400">DAO</span>
+              Human<br />
+              <span className="text-gray-400">Bond</span>
             </h1>
 
             <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-[280px] mx-auto">

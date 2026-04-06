@@ -1,5 +1,5 @@
 /**
- * Purpose: Contract addresses and configurations for Marriage DAO
+ * Purpose: Contract addresses and configurations for HumanBond
  * Contains deployed contract addresses on Worldchain Mainnet
  */
 

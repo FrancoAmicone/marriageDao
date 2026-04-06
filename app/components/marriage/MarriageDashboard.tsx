@@ -7,6 +7,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
@@ -15,13 +17,12 @@ import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
 import {
     Coins,
     TrendingUp,
-    HandHeart,
+    Handshake,
     Calendar,
     Image as ImageIcon,
-    Heart,
     Clock,
     ChevronRight,
-    Sparkles
+    Sparkles,
 } from "lucide-react";
 import { MarriageView } from "@/lib/hooks/useMarriageDetails";
 
@@ -41,6 +42,7 @@ export function MarriageDashboard({
     marriageView: propsMarriageView,
     isMarriageLoading: propsIsMarriageLoading
 }: MarriageDashboardProps) {
+    const router = useRouter();
     const { walletAddress } = useAuthStore();
     const [divorceState, setDivorceState] = useState<DivorceState>("idle");
     const [claimState, setClaimState] = useState<ClaimState>("idle");
@@ -210,15 +212,21 @@ export function MarriageDashboard({
             <div className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-8 relative overflow-hidden">
                 {/* Decorative Pattern */}
                 <div className="absolute top-10 right-0 p-4 opacity-[0.03]">
-                    <Heart size={120} className="text-pink-600 rotate-12" />
+                    <Handshake size={120} className="text-gray-900 rotate-12" />
                 </div>
 
                 {/* Header Section */}
                 <div className="text-center space-y-3 relative">
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-pink-50 rounded-full mb-2">
-                        <Heart className="text-pink-500 fill-pink-500" size={40} />
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-2 overflow-hidden">
+                        <Image
+                            src="/Isotype.png"
+                            alt="HumanBond"
+                            width={56}
+                            height={56}
+                            className="h-14 w-14 object-contain"
+                        />
                     </div>
-                    <h3 className="text-3xl font-bold tracking-tight text-gray-900">You are Married!</h3>
+                    <h3 className="text-3xl font-bold tracking-tight text-gray-900">You are Bonded!</h3>
                     {marriageStats && (
                         <div className="flex items-center justify-center gap-2 text-gray-500">
                             <Calendar size={16} />
@@ -231,7 +239,7 @@ export function MarriageDashboard({
                 <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between group hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                            <HandHeart size={20} className="text-gray-400" />
+                            <Handshake size={20} className="text-gray-400" strokeWidth={2} />
                         </div>
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Partner</p>
@@ -242,7 +250,7 @@ export function MarriageDashboard({
                     </div>
                 </div>
 
-                {/* Shared Wealth Section - THE CORE REDESIGN */}
+                {/* Shared Wealth Section */}
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Sparkles size={18} className="text-amber-500" />
@@ -285,7 +293,6 @@ export function MarriageDashboard({
                                 </div>
                             </div>
 
-                            {/* Progress Bar for the day */}
                             <div className="space-y-2">
                                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                     <div
@@ -299,7 +306,6 @@ export function MarriageDashboard({
                                 </div>
                             </div>
 
-                            {/* Withdraw Section */}
                             {pendingYield > 0 && (
                                 <div className="mt-6 pt-6 border-t border-gray-50">
                                     <button
@@ -341,7 +347,7 @@ export function MarriageDashboard({
                 {/* Action Buttons */}
                 <div className="pt-4 space-y-3">
                     <button
-                        onClick={() => window.location.href = '/marriage/gallery'}
+                        onClick={() => router.push("/marriage/gallery")}
                         className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:bg-gray-50 transition-all flex items-center justify-between group"
                     >
                         <div className="flex items-center gap-3">
@@ -365,7 +371,6 @@ export function MarriageDashboard({
             {/* Next Milestone Card */}
             {marriageStats && (
                 <div className="bg-[#1A1A1A] rounded-[2rem] p-6 space-y-4 relative overflow-hidden">
-                    {/* Background Glow */}
                     <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/10 blur-[60px]" />
 
                     <div className="flex items-center justify-between relative">
@@ -396,11 +401,10 @@ export function MarriageDashboard({
                             )}
                         </div>
 
-                        {/* Progress Bar */}
                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full"
-                                style={{ width: `${100 - (marriageStats.daysToAnniversary / 365.25 * 100)}%` }}
+                                style={{ width: `${100 - (marriageStats.daysToAnniversary / 365.25) * 100}%` }}
                             ></div>
                         </div>
                     </div>
@@ -413,13 +417,21 @@ export function MarriageDashboard({
                     <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
                         <Coins size={16} className="text-amber-500" />
                     </div>
-                    <p className="text-xs font-bold text-gray-800 leading-tight">Shared<br />1 TIME / Day</p>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">
+                        Shared
+                        <br />
+                        1 TIME / Day
+                    </p>
                 </div>
                 <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
-                    <div className="w-8 h-8 bg-pink-50 rounded-xl flex items-center justify-center">
-                        <Heart size={16} className="text-pink-500" />
+                    <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden p-1">
+                        <Image src="/Isotype.png" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
                     </div>
-                    <p className="text-xs font-bold text-gray-800 leading-tight">Unique<br />Vow NFTs</p>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">
+                        Unique
+                        <br />
+                        Vow NFTs
+                    </p>
                 </div>
             </div>
 
@@ -430,31 +442,33 @@ export function MarriageDashboard({
                         <Clock size={14} className="text-gray-400" />
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Marriage ID</span>
                     </div>
-                    <p className="text-[10px] font-mono text-gray-400 truncate max-w-[150px]">
-                        {marriageStats.marriageId}
-                    </p>
+                    <p className="text-[10px] font-mono text-gray-400 truncate max-w-[150px]">{marriageStats.marriageId}</p>
                 </div>
             )}
 
             {/* Divorce Confirmation Popup */}
             {showConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    {/* Overlay */}
                     <div
                         className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity"
                         onClick={() => !divorceState.includes("sending") && divorceState !== "success" && setShowConfirm(false)}
                     />
 
-                    {/* Modal */}
                     <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in fade-in zoom-in duration-300">
-                        {/* Status Icon */}
                         <div className="flex justify-center">
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center ${divorceState === "success" ? "bg-emerald-50 text-emerald-500" : "bg-red-50 text-red-500"}`}>
-                                {divorceState === "success" ? <Sparkles size={40} /> : <Heart size={40} className="fill-red-500" />}
+                            <div
+                                className={`w-20 h-20 rounded-full flex items-center justify-center ${
+                                    divorceState === "success" ? "bg-emerald-50 text-emerald-500" : "bg-red-50 text-red-500"
+                                }`}
+                            >
+                                {divorceState === "success" ? (
+                                    <Sparkles size={40} />
+                                ) : (
+                                    <Handshake size={40} className="text-red-500" strokeWidth={2} />
+                                )}
                             </div>
                         </div>
 
-                        {/* Text Content */}
                         <div className="text-center space-y-2">
                             <h3 className="text-2xl font-black text-gray-900 tracking-tight">
                                 {divorceState === "success" ? "Bond Dissolved" : "End the Bond?"}
@@ -471,14 +485,12 @@ export function MarriageDashboard({
                             )}
                         </div>
 
-                        {/* Error State */}
                         {error && (
                             <div className="p-4 bg-red-50 border border-red-100 rounded-2xl">
                                 <p className="text-xs font-bold text-red-600 text-center uppercase tracking-wider">{error}</p>
                             </div>
                         )}
 
-                        {/* Action Buttons */}
                         <div className="flex flex-col gap-3 pt-2">
                             {divorceState === "success" ? (
                                 <button

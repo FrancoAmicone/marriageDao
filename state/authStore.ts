@@ -115,7 +115,17 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'marriage-dao-auth', // localStorage key
+      name: 'humanbond-auth',
+      version: 1,
+      migrate: (persisted: any, version: number) => {
+        if (version === 0) {
+          return {
+            ...persisted,
+            manuallyDisconnected: persisted.manuallyDisconnected ?? false,
+          }
+        }
+        return persisted as AuthState
+      },
     }
   )
 )

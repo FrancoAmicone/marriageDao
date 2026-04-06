@@ -1,5 +1,5 @@
 /**
- * Purpose: Wagmi configuration for Marriage DAO
+ * Purpose: Wagmi configuration for HumanBond
  * Configures wagmi to work with Worldchain Mainnet
  * This config is used by WagmiProvider in the app layout
  */

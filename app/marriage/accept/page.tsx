@@ -1,9 +1,10 @@
-/**
- * Purpose: Accept Marriage Proposal page
- * Allows user to accept or reject a marriage proposal
- */
-
+import type { Metadata } from "next";
 import { AcceptProposalForm } from "../../components/marriage/AcceptProposalForm";
+
+export const metadata: Metadata = {
+  title: "Accept Proposal | HumanBond",
+  description: "Accept a marriage proposal and create an eternal bond on Worldchain.",
+};
 
 export default function AcceptProposalPage() {
   return (

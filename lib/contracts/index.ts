@@ -1,5 +1,5 @@
 /**
- * Purpose: Contract addresses and configurations for Marriage DAO
+ * Purpose: Contract addresses and configurations for HumanBond
  * Contains deployed contract addresses on Worldchain Mainnet
  */
 
@@ -19,6 +19,9 @@ export const WORLD_APP_CONFIG = {
     ACCEPT_BOND: 'accept-bond',
   },
 } as const
+
+// Mini App deep link — embedded in chat messages so recipients can tap back in
+export const APP_URL = 'https://worldminiapp.world/mini-app/humanbond' as const
 
 // VowNFT ABI
 export const VOW_NFT_ABI = [

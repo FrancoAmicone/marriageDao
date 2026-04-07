@@ -16,13 +16,26 @@ import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI, WORLD_APP_CONFIG } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
-import { Sparkles, ScanFace, Calculator } from "lucide-react";
-import { PrenupModal } from "./PrenupModal";
+import { Sparkles, ScanFace, MessageCircle } from "lucide-react";
+import { decodeProof } from "@/lib/utils/decodeProof";
+import { useWorldProfile, resolveToAddress, triggerDirectChat } from "@/lib/worldcoin/useWorldProfile";
+import { APP_URL } from "@/lib/contracts";
+import dynamic from "next/dynamic";
+
+const PrenupModal = dynamic(() => import("./PrenupModal").then(m => m.PrenupModal), { ssr: false });
 
 type ProposalState = "idle" | "verifying" | "sending" | "success" | "error";
 
 export function CreateProposalForm() {
-  const [partnerAddress, setPartnerAddress] = useState("");
+  // Raw value the user types — can be "@alice", "alice", or "0x..."
+  const [rawInput, setRawInput] = useState("");
+  // Resolved 0x address ready for the on-chain tx
+  const [resolvedAddress, setResolvedAddress] = useState("");
+  // Username from resolution (used in the chat remind message)
+  const [resolvedUsername, setResolvedUsername] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
   const [state, setState] = useState<ProposalState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -30,6 +43,53 @@ export function CreateProposalForm() {
   const [showPrenup, setShowPrenup] = useState(false);
 
   const { walletAddress, setWalletAddress } = useAuthStore();
+
+  // Only resolve partner's username after the proposal succeeds
+  const { profile: partnerProfile } = useWorldProfile(
+    state === 'success' ? resolvedAddress : null
+  );
+
+  // Live username/address resolution — debounced 600ms after user stops typing
+  useEffect(() => {
+    const trimmed = rawInput.trim();
+
+    if (!trimmed) {
+      setResolvedAddress("");
+      setResolvedUsername(null);
+      setResolveError(null);
+      return;
+    }
+
+    // Direct 0x address — instant, no API call needed
+    if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+      setResolvedAddress(trimmed);
+      setResolvedUsername(null);
+      setResolveError(null);
+      return;
+    }
+
+    // Username — debounce then hit the API
+    setResolvedAddress("");
+    setResolveError(null);
+    setIsResolving(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const { address, username } = await resolveToAddress(trimmed);
+        setResolvedAddress(address);
+        setResolvedUsername(username);
+        setResolveError(null);
+      } catch (err) {
+        setResolvedAddress("");
+        setResolvedUsername(null);
+        setResolveError(err instanceof Error ? err.message : "Username not found");
+      } finally {
+        setIsResolving(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [rawInput]);
 
   // Check if running in World App on mount
   useEffect(() => {
@@ -49,19 +109,6 @@ export function CreateProposalForm() {
   }, [walletAddress, setWalletAddress]);
 
   /**
-   * Decode World ID proof string to uint256[8] array
-   */
-  const decodeProof = (proof: string): [string, string, string, string, string, string, string, string] => {
-    const cleanProof = proof.startsWith("0x") ? proof.slice(2) : proof;
-    const proofArray: string[] = [];
-    for (let i = 0; i < 8; i++) {
-      const chunk = cleanProof.slice(i * 64, (i + 1) * 64);
-      proofArray.push(BigInt("0x" + chunk).toString());
-    }
-    return proofArray as [string, string, string, string, string, string, string, string];
-  };
-
-  /**
    * Step 1: Handle initial form submission
    */
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,9 +116,8 @@ export function CreateProposalForm() {
     setError(null);
     setTxHash(null);
 
-    // Validate partner address
-    if (!partnerAddress || !/^0x[a-fA-F0-9]{40}$/.test(partnerAddress)) {
-      setError("Please enter a valid Ethereum address");
+    if (!resolvedAddress) {
+      setError(isResolving ? "Still resolving, please wait" : "Enter a valid address or @username");
       return;
     }
 
@@ -121,7 +167,7 @@ export function CreateProposalForm() {
             abi: HUMAN_BOND_ABI,
             functionName: "propose",
             args: [
-              partnerAddress,
+              resolvedAddress,
               merkleRoot,
               nullifierHash,
               proofArray,
@@ -146,6 +192,12 @@ export function CreateProposalForm() {
       setError(errorMsg);
     }
   };
+
+  const handleRemindInChat = () => {
+    if (!isWorldApp) return
+    // Prefer the username from input resolution; fall back to resolved address
+    triggerDirectChat(resolvedUsername ?? resolvedAddress)
+  }
 
   const isLoading = state === "verifying" || state === "sending";
 
@@ -172,16 +224,36 @@ export function CreateProposalForm() {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">
-                Partner Address
+                Partner
               </label>
               <input
                 type="text"
-                value={partnerAddress}
-                onChange={(e) => setPartnerAddress(e.target.value)}
-                placeholder="0x..."
+                value={rawInput}
+                onChange={(e) => setRawInput(e.target.value)}
+                placeholder="@username or 0x..."
                 className="w-full px-6 py-5 rounded-3xl bg-gray-50 text-black text-base font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-black/5 border border-transparent focus:border-black/5 transition-all"
                 disabled={isLoading}
               />
+              {/* Resolution feedback */}
+              {isResolving && (
+                <div className="flex items-center gap-2 px-4">
+                  <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resolving…</span>
+                </div>
+              )}
+              {resolvedUsername && resolvedAddress && !isResolving && (
+                <div className="flex items-center gap-2 px-4">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                    @{resolvedUsername} → {resolvedAddress.slice(0, 6)}…{resolvedAddress.slice(-4)}
+                  </span>
+                </div>
+              )}
+              {resolveError && (
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest px-4">
+                  {resolveError}
+                </p>
+              )}
             </div>
 
             {/* Connected Info */}
@@ -198,7 +270,7 @@ export function CreateProposalForm() {
           <button
             type="submit"
             className="group w-full bg-black text-white px-8 py-5 rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-100 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!partnerAddress || isLoading || !isWorldApp}
+            disabled={!resolvedAddress || isResolving || isLoading || !isWorldApp}
           >
             {isLoading ? (
               <>
@@ -231,6 +303,15 @@ export function CreateProposalForm() {
                 >
                   View on WorldScan →
                 </a>
+              )}
+              {isWorldApp && (
+                <button
+                  onClick={handleRemindInChat}
+                  className="mt-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <MessageCircle size={14} />
+                  Remind them in World Chat
+                </button>
               )}
             </div>
           )}

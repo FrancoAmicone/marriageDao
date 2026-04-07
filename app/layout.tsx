@@ -1,23 +1,7 @@
-/**
- * Purpose: Root layout with providers for World App and blockchain integration
- * Wraps the entire app with:
- * - MiniKitProvider: Enables World ID verification and wallet auth
- * - WagmiProvider: Enables Worldchain blockchain integration
- * - QueryClientProvider: Required by wagmi for data fetching
- */
-
-'use client'
-
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MiniKitProvider } from "@worldcoin/minikit-js/minikit-provider";
-import { WagmiProvider } from "wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { wagmiConfig } from "@/lib/wagmi/config";
-import { Header } from "./components/Header";
-import { usePathname } from "next/navigation";
-
+import { Providers } from "./components/Providers";
 import "./globals.css";
-import { useState } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,47 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/**
- * Root Layout Component
- * 
- * Provider hierarchy:
- * 1. MiniKitProvider - World App integration (outermost)
- * 2. WagmiProvider - Blockchain connection
- * 3. QueryClientProvider - Data fetching for wagmi
- */
+export const metadata: Metadata = {
+  title: "HumanBond",
+  description: "The first protocol for eternalizing relationships on Worldchain. Verify your love, earn TIME.",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Create QueryClient instance (must be in client component)
-  const [queryClient] = useState(() => new QueryClient())
-
-  const pathname = usePathname();
-  const isGalleryPage = pathname === '/marriage/gallery';
-
   return (
     <html lang="en">
-      {/* MiniKitProvider enables World App functionality */}
-      <MiniKitProvider>
-        {/* WagmiProvider enables blockchain interactions */}
-        <WagmiProvider config={wagmiConfig}>
-          {/* QueryClientProvider required by wagmi */}
-          <QueryClientProvider client={queryClient}>
-            <body
-              className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-            >
-              {/* Fixed header with logo and wallet connect - hidden on gallery page */}
-              {!isGalleryPage && <Header />}
-
-              {/* Main content with top padding to account for fixed header (80px + 40px gap) */}
-              <div className={isGalleryPage ? "pt-0" : "pt-[160px]"}>
-                {children}
-              </div>
-            </body>
-          </QueryClientProvider>
-        </WagmiProvider>
-      </MiniKitProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -1,5 +1,5 @@
 {
-  "name": "marriage-dao",
+  "name": "humanbond",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,12 +12,11 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@tanstack/react-query": "^5.90.10",
-    "@web3-storage/w3up-client": "^17.3.0",
     "@worldcoin/minikit-js": "^1.9.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.554.0",
-    "next": "16.0.10",
+    "next": "^16.2.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "tailwind-merge": "^3.4.0",

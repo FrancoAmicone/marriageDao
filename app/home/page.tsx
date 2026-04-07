@@ -1,5 +1,5 @@
 /**
- * Purpose: Home page for Marriage DAO (Protected Route)
+ * Purpose: Home page for HumanBond (Protected Route)
  * Shows two options: Make a Proposal or Accept a Proposal
  * If user is already married, shows "You are already married" message
  * Requires World ID verification to access
@@ -15,7 +15,6 @@ import { useWalletAuth } from "@/lib/worldcoin/useWalletAuth";
 import { useUserDashboard } from "@/lib/worldcoin/useUserDashboard";
 import { useProposals } from "@/lib/hooks/useProposals";
 import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
-import { MarriageDashboard } from "../components/marriage/MarriageDashboard";
 import {
   ShieldCheck,
   Heart,
@@ -26,8 +25,113 @@ import {
   UserPlus,
   Users,
   Clock,
-  ArrowRight
+  ArrowRight,
+  MessageCircle,
+  Coins,
+  Image as ImageIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useWorldProfile, displayName, triggerDirectChat, triggerProfileCard } from "@/lib/worldcoin/useWorldProfile";
+import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
+import { APP_URL } from "@/lib/contracts";
+import type { ProposalInfo } from "@/lib/hooks/useProposals";
+
+const MarriageDashboard = dynamic(
+  () => import("../components/marriage/MarriageDashboard").then(m => m.MarriageDashboard),
+  { ssr: false }
+);
+
+// ---------------------------------------------------------------------------
+// ProposalCard — extracted so useWorldProfile can be called per-proposal
+// (React's rules of hooks forbid calling hooks inside .map())
+// ---------------------------------------------------------------------------
+
+function ProposalCard({
+  proposal,
+  copiedAddress,
+  onCopy,
+}: {
+  proposal: ProposalInfo
+  copiedAddress: string | null
+  onCopy: (addr: string) => void
+}) {
+  const { profile, isLoading: isProfileLoading } = useWorldProfile(proposal.proposer)
+  const name = displayName(proposal.proposer, profile.username)
+
+  // Track World App availability on the client only to avoid hydration mismatch
+  const [isWorldApp, setIsWorldApp] = useState(false)
+  useEffect(() => { setIsWorldApp(isInWorldApp()) }, [])
+
+  const handleOpenProfile = () => {
+    triggerProfileCard(proposal.proposer)
+  }
+
+  const handleMessage = () => {
+    triggerDirectChat(profile.username ?? proposal.proposer)
+  }
+
+  return (
+    <div className="group relative bg-gray-50/50 hover:bg-rose-50/50 rounded-2xl p-4 transition-all duration-300 border border-transparent hover:border-rose-100">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center shadow-sm text-white group-hover:bg-rose-500 transition-colors">
+          <UserPlus size={18} />
+        </div>
+
+        <div className="flex-1 text-left min-w-0 w-0">
+          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Proposer</p>
+          {/* Tapping the name opens the native World profile card */}
+          <button
+            onClick={handleOpenProfile}
+            className="text-left w-full"
+            title={proposal.proposer}
+          >
+            {isProfileLoading ? (
+              <span className="block h-3 w-28 bg-gray-200 rounded animate-pulse" />
+            ) : (
+              <p className="text-[11px] font-mono font-bold text-gray-900 truncate overflow-hidden">
+                {name}
+              </p>
+            )}
+          </button>
+        </div>
+
+        {/* Copy address */}
+        <button
+          onClick={() => onCopy(proposal.proposer)}
+          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white hover:bg-rose-500 group-hover:shadow-md transition-all active:scale-90 text-gray-400 hover:text-white"
+        >
+          {copiedAddress === proposal.proposer ? <Check size={16} /> : <Copy size={16} />}
+        </button>
+
+        {/* Message in World Chat — only rendered inside World App */}
+        {isWorldApp && (
+          <button
+            onClick={handleMessage}
+            title="Message in World Chat"
+            className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white hover:bg-rose-500 group-hover:shadow-md transition-all active:scale-90 text-gray-400 hover:text-white"
+          >
+            <MessageCircle size={16} />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-gray-100/50 flex items-center justify-between">
+        <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase">
+          <Clock size={10} />
+          {new Date(Number(proposal.timestamp) * 1000).toLocaleDateString()}
+        </div>
+        <Link
+          href="/marriage/accept"
+          className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all"
+        >
+          Review <ArrowRight size={10} />
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 
 export default function HomePage() {
   const router = useRouter();
@@ -46,6 +150,18 @@ export default function HomePage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+
+  // Resolve own username for the verification badge and header
+  const { profile: ownProfile } = useWorldProfile(isConnected ? address ?? null : null);
+
+  // Resolve outgoing partner username — only fires when there's a pending proposal
+  const { profile: pendingPartnerProfile, isLoading: isPendingPartnerLoading } = useWorldProfile(
+    outgoingProposal?.proposed ?? null
+  );
+
+  // Detect World App on client to conditionally show chat buttons
+  const [isWorldApp, setIsWorldApp] = useState(false);
+  useEffect(() => { setIsWorldApp(isInWorldApp()) }, []);
 
   // Function to copy address to clipboard
   const copyToClipboard = async (walletAddress: string) => {
@@ -103,7 +219,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
       {/* Main content - centered by default, top-aligned when married for 20px gap */}
-      <main className={`flex-1 flex flex-col items-center justify-start px-6`}>
+      <main className={`flex-1 flex flex-col items-center justify-start px-6 pb-12`}>
         {!isMarried ? (
           <div className="flex flex-col items-center text-center space-y-12 max-w-lg w-full">
             {/* Onchain Verification Badge */}
@@ -115,8 +231,22 @@ export default function HomePage() {
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest leading-none">Verified Human Identity</span>
                 <div className="h-3 w-px bg-emerald-100 mx-1" />
-                <span className="text-[10px] font-mono font-bold opacity-60">
-                  {address.slice(0, 6)}...{address.slice(-4)}
+                <span className="text-[10px] font-mono font-bold opacity-60" title={address}>
+                  {displayName(address, ownProfile.username)}
+                </span>
+              </div>
+            )}
+
+            {/* TIME balance from previous bond */}
+            {isConnected && dashboard && Number(dashboard.timeBalance) > 0 && (
+              <div className="flex items-center gap-2.5 px-5 py-2.5 bg-white shadow-sm border border-amber-100 rounded-full animate-in fade-in slide-in-from-top-4 duration-700">
+                <Coins size={14} className="text-amber-500 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-widest leading-none text-amber-700">
+                  Time Collected
+                </span>
+                <div className="h-3 w-px bg-amber-100 mx-1" />
+                <span className="text-[10px] font-mono font-bold text-amber-600">
+                  {(Number(dashboard.timeBalance) / 1e18).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TIME
                 </span>
               </div>
             )}
@@ -140,34 +270,12 @@ export default function HomePage() {
 
                 <div className="space-y-3">
                   {incomingProposals.map((proposal, index) => (
-                    <div key={index} className="group relative bg-gray-50/50 hover:bg-rose-50/50 rounded-2xl p-4 transition-all duration-300 border border-transparent hover:border-rose-100">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center shadow-sm text-white group-hover:bg-rose-500 transition-colors">
-                          <UserPlus size={18} />
-                        </div>
-                        <div className="flex-1 text-left min-w-0 w-0">
-                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Proposer Address</p>
-                          <p className="text-[11px] font-mono font-bold text-gray-900 truncate overflow-hidden">
-                            {proposal.proposer}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => copyToClipboard(proposal.proposer)}
-                          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white hover:bg-rose-500 group-hover:shadow-md transition-all active:scale-90 text-gray-400 hover:text-white"
-                        >
-                          {copiedAddress === proposal.proposer ? <Check size={16} /> : <Copy size={16} />}
-                        </button>
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-gray-100/50 flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase">
-                          <Clock size={10} />
-                          {new Date(Number(proposal.timestamp) * 1000).toLocaleDateString()}
-                        </div>
-                        <Link href="/marriage/accept" className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
-                          Review <ArrowRight size={10} />
-                        </Link>
-                      </div>
-                    </div>
+                    <ProposalCard
+                      key={index}
+                      proposal={proposal}
+                      copiedAddress={copiedAddress}
+                      onCopy={copyToClipboard}
+                    />
                   ))}
                 </div>
               </div>
@@ -192,16 +300,34 @@ export default function HomePage() {
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 relative z-10">
                   <div className="flex-1 text-left min-w-0 w-0">
                     <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">To partner</p>
-                    <p className="text-[11px] font-mono font-bold text-amber-100 truncate overflow-hidden">
-                      {outgoingProposal.proposed}
-                    </p>
+                    {isPendingPartnerLoading ? (
+                      <span className="block h-3 w-28 bg-white/10 rounded animate-pulse mt-1" />
+                    ) : (
+                      <p
+                        className="text-[11px] font-mono font-bold text-amber-100 truncate overflow-hidden"
+                        title={outgoingProposal.proposed}
+                      >
+                        {displayName(outgoingProposal.proposed, pendingPartnerProfile.username)}
+                      </p>
+                    )}
                   </div>
+                  {/* Copy */}
                   <button
                     onClick={() => copyToClipboard(outgoingProposal.proposed)}
                     className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white text-gray-400 hover:text-black transition-all"
                   >
                     {copiedAddress === outgoingProposal.proposed ? <Check size={16} /> : <Copy size={16} />}
                   </button>
+                  {/* Direct chat */}
+                  {isWorldApp && (
+                    <button
+                      onClick={() => triggerDirectChat(pendingPartnerProfile.username ?? outgoingProposal.proposed)}
+                      title="Message in World Chat"
+                      className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white/10 hover:bg-amber-500 text-gray-400 hover:text-white transition-all"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                  )}
                 </div>
 
                 <p className="text-[10px] text-gray-500 font-medium leading-relaxed relative z-10 text-left px-1">
@@ -257,6 +383,14 @@ export default function HomePage() {
                       {incomingProposals.length}
                     </span>
                   )}
+                </Link>
+
+                <Link
+                  href="/marriage/gallery"
+                  className="w-full bg-white text-black px-8 py-5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] border border-gray-100 hover:bg-gray-50 transition-all duration-300 shadow-sm flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0"
+                >
+                  <ImageIcon size={16} className="text-gray-400" />
+                  <span>My Gallery</span>
                 </Link>
               </div>
             ) : (

@@ -1,9 +1,4 @@
-/**
- * Hook to fetch proposal data from HumanBond contract
- * Returns incoming proposals and outgoing proposal status
- */
-
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useWalletAuth } from '../worldcoin/useWalletAuth';
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from '@/lib/contracts';
 import { readContract } from '@wagmi/core';
@@ -23,95 +18,53 @@ export type ProposalsData = {
     hasPendingProposal: boolean;
 };
 
-export function useProposals() {
-    const { address, isConnected } = useWalletAuth();
-    const [data, setData] = useState<ProposalsData>({
-        incomingProposals: [],
-        outgoingProposal: null,
-        hasPendingProposal: false,
-    });
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+async function fetchProposals(address: `0x${string}`): Promise<ProposalsData> {
+    const contractAddr = CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`;
 
-    const fetchProposals = async () => {
-        if (!isConnected || !address) {
-            setData({
-                incomingProposals: [],
-                outgoingProposal: null,
-                hasPendingProposal: false,
-            });
-            setError(null);
-            setIsLoading(false);
-            return;
-        }
+    const [incomingProposals, hasPending] = await Promise.all([
+        readContract(wagmiConfig, {
+            address: contractAddr,
+            abi: HUMAN_BOND_ABI,
+            functionName: 'getIncomingProposals',
+            args: [address],
+        }) as Promise<ProposalInfo[]>,
+        readContract(wagmiConfig, {
+            address: contractAddr,
+            abi: HUMAN_BOND_ABI,
+            functionName: 'hasPendingProposal',
+            args: [address],
+        }) as Promise<boolean>,
+    ]);
 
-        try {
-            setIsLoading(true);
-            setError(null);
+    let outgoingProposal: ProposalInfo | null = null;
+    if (hasPending) {
+        outgoingProposal = await readContract(wagmiConfig, {
+            address: contractAddr,
+            abi: HUMAN_BOND_ABI,
+            functionName: 'getProposal',
+            args: [address],
+        }) as ProposalInfo;
+    }
 
-            // Fetch incoming proposals (proposals made TO this user)
-            const incomingProposals = await readContract(wagmiConfig, {
-                address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                abi: HUMAN_BOND_ABI,
-                functionName: 'getIncomingProposals',
-                args: [address as `0x${string}`],
-            }) as ProposalInfo[];
-
-            // Check if user has sent a proposal (hasPendingProposal)
-            const hasPending = await readContract(wagmiConfig, {
-                address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                abi: HUMAN_BOND_ABI,
-                functionName: 'hasPendingProposal',
-                args: [address as `0x${string}`],
-            }) as boolean;
-
-            let outgoingProposal: ProposalInfo | null = null;
-
-            // If user has pending proposal, fetch its details
-            if (hasPending) {
-                outgoingProposal = await readContract(wagmiConfig, {
-                    address: CONTRACT_ADDRESSES.HUMAN_BOND as `0x${string}`,
-                    abi: HUMAN_BOND_ABI,
-                    functionName: 'getProposal',
-                    args: [address as `0x${string}`],
-                }) as ProposalInfo;
-            }
-
-            setData({
-                incomingProposals,
-                outgoingProposal,
-                hasPendingProposal: hasPending,
-            });
-
-        } catch (err) {
-            console.error('Error fetching proposals:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch proposals');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        let isActive = true;
-
-        const loadProposals = async () => {
-            if (isActive) {
-                await fetchProposals();
-            }
-        };
-
-        loadProposals();
-
-        return () => {
-            isActive = false;
-        };
-    }, [address, isConnected]);
-
-    return {
-        ...data,
-        isLoading,
-        error,
-        refetch: fetchProposals,
-    };
+    return { incomingProposals, outgoingProposal, hasPendingProposal: hasPending };
 }
 
+export function useProposals() {
+    const { address, isConnected } = useWalletAuth();
+
+    const { data, isLoading, error, refetch } = useQuery({
+        queryKey: ['proposals', address],
+        queryFn: () => fetchProposals(address as `0x${string}`),
+        enabled: isConnected && !!address,
+        staleTime: 30_000,
+    });
+
+    return {
+        incomingProposals: data?.incomingProposals ?? [],
+        outgoingProposal: data?.outgoingProposal ?? null,
+        hasPendingProposal: data?.hasPendingProposal ?? false,
+        isLoading,
+        error: error ? (error instanceof Error ? error.message : 'Failed to fetch proposals') : null,
+        refetch,
+    };
+}

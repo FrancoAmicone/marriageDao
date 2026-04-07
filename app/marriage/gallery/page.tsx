@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useVowNFT } from "@/lib/hooks/useVowNFT";
 import { useMilestoneNFTs } from "@/lib/hooks/useMilestoneNFTs";
 import { NFTCard } from "@/app/components/marriage/NFTCard";
@@ -12,13 +13,13 @@ import {
     Sparkles,
     Trophy,
     Heart,
-    Image as ImageIcon,
     Calendar,
     ArrowRight
 } from "lucide-react";
 
 export default function GalleryPage() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { vowNFTs, isLoading: loadingVow, error: vowError } = useVowNFT();
     const { milestones, isLoading: loadingMilestones, error: milestonesError } = useMilestoneNFTs();
 
@@ -310,7 +311,8 @@ export default function GalleryPage() {
                             <button
                                 onClick={() => {
                                     setShowSuccessModal(false);
-                                    window.location.reload();
+                                    queryClient.invalidateQueries({ queryKey: ['milestoneNFTs'] });
+                                    queryClient.invalidateQueries({ queryKey: ['vowNFTs'] });
                                 }}
                                 className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-gray-900 hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
                             >

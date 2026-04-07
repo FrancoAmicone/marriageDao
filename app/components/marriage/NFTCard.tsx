@@ -1,8 +1,8 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import {
     Calendar,
     User,
-    Hash,
     Sparkles,
     ShieldCheck,
     Clock
@@ -44,17 +44,18 @@ export function NFTCard({ image, name, description, tokenId, year, customMetadat
                             </div>
                         )}
 
-                        {/* Actual Image */}
-                        <img
+                        <Image
                             src={resolvedImageUrl}
                             alt={name}
-                            className={`object-cover w-full h-full transition-all duration-700 group-hover:scale-110 ${imageLoading ? 'opacity-0' : 'opacity-100'
-                                }`}
+                            fill
+                            sizes="(max-width: 640px) 85vw, 400px"
+                            className={`object-cover transition-all duration-700 group-hover:scale-110 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
                             onLoad={() => setImageLoading(false)}
                             onError={() => {
                                 setImageError(true);
                                 setImageLoading(false);
                             }}
+                            unoptimized
                         />
 
                         {/* Glass Overlay for Token ID */}

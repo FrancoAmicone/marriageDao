@@ -1,5 +1,5 @@
 /**
- * Purpose: Reusable Header component for Marriage DAO
+ * Purpose: Reusable Header component for HumanBond
  * Displays the logo in the top-left corner
  * Shows wallet connection button and address in the top-right
  * 
@@ -13,28 +13,25 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useWalletAuth } from "@/lib/worldcoin/useWalletAuth";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
+import { useHydrated } from "@/lib/hooks/useHydrated";
+import { useWorldProfile, displayName } from "@/lib/worldcoin/useWorldProfile";
+
+const formatAddress = (addr: string) =>
+  `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
 export function Header() {
   const { address, isConnected, isConnecting, connect, disconnect, error } = useWalletAuth();
+  const { profile } = useWorldProfile(isConnected ? address : null);
   const [isWorldApp, setIsWorldApp] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
 
-  // Check if in World App after mount (to avoid hydration issues)
   useEffect(() => {
-    setMounted(true);
+    if (!mounted) return;
     const timer = setTimeout(() => {
       setIsWorldApp(isInWorldApp());
     }, 300);
     return () => clearTimeout(timer);
-  }, []);
-
-  /**
-   * Format wallet address for display
-   * Shows first 6 and last 4 characters
-   */
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
+  }, [mounted]);
 
   /**
    * Handle connect button click
@@ -56,11 +53,12 @@ export function Header() {
           <Link href="/" className="inline-block">
             <Image
               src="/Isotype.png"
-              alt="Marriage DAO Logo"
+              alt="HumanBond Logo"
               width={60}
               height={60}
               priority
               className="hover:opacity-80 transition-opacity"
+              style={{ width: "auto", height: "auto" }}
             />
           </Link>
           <div className="px-4 py-2 bg-black/5 rounded-full">
@@ -78,11 +76,12 @@ export function Header() {
         <Link href="/" className="inline-block">
           <Image
             src="/Isotype.png"
-            alt="Marriage DAO Logo"
+            alt="HumanBond Logo"
             width={60}
             height={60}
             priority
             className="hover:opacity-80 transition-opacity"
+            style={{ width: "auto", height: "auto" }}
           />
         </Link>
 
@@ -91,9 +90,9 @@ export function Header() {
           {isConnected && address ? (
             // Connected state
             <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-black/5 rounded-full">
+              <div className="px-4 py-2 bg-black/5 rounded-full" title={address}>
                 <p className="text-sm font-mono text-black">
-                  {formatAddress(address)}
+                  {displayName(address, profile.username)}
                 </p>
               </div>
               <button

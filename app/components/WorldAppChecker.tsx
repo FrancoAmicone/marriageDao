@@ -7,6 +7,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useHydrated } from '@/lib/hooks/useHydrated'
 
 import {
   Dialog,
@@ -50,17 +51,13 @@ export interface WorldAppCheckerProps {
 }
 
 export function WorldAppChecker({ isOpen, onOpenChange }: WorldAppCheckerProps) {
-  const [isMounted, setIsMounted] = useState(false)
+  const isMounted = useHydrated()
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop')
 
   useEffect(() => {
-    // Mark component as mounted
-    setIsMounted(true)
-
-    // Detect platform immediately
-    const userPlatform = detectPlatform()
-    setPlatform(userPlatform)
-  }, [])
+    if (!isMounted) return
+    setPlatform(detectPlatform())
+  }, [isMounted])
 
   /**
    * Redirect to the appropriate app store based on platform

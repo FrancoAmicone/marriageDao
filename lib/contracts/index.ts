@@ -20,6 +20,9 @@ export const WORLD_APP_CONFIG = {
   },
 } as const
 
+// Mini App deep link — embedded in chat messages so recipients can tap back in
+export const APP_URL = 'https://worldminiapp.world/mini-app/humanbond' as const
+
 // VowNFT ABI
 export const VOW_NFT_ABI = [
   {

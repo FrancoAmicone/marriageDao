@@ -23,7 +23,11 @@ import {
     Clock,
     ChevronRight,
     Sparkles,
+    MessageCircle,
 } from "lucide-react";
+import { useWorldProfile, displayName, triggerDirectChat, triggerProfileCard } from "@/lib/worldcoin/useWorldProfile";
+import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
+import { APP_URL } from "@/lib/contracts";
 import { MarriageView } from "@/lib/hooks/useMarriageDetails";
 
 type DivorceState = "idle" | "sending" | "success" | "error";
@@ -44,6 +48,15 @@ export function MarriageDashboard({
 }: MarriageDashboardProps) {
     const router = useRouter();
     const { walletAddress } = useAuthStore();
+
+    const { profile: partnerProfile, isLoading: isPartnerLoading } = useWorldProfile(dashboard.partner)
+    const partnerDisplayName = displayName(dashboard.partner, partnerProfile.username)
+
+    // Detect World App on client only — component is loaded ssr:false so no hydration risk,
+    // but we use useEffect for consistency with the rest of the codebase
+    const [isWorldApp, setIsWorldApp] = useState(false)
+    useEffect(() => { setIsWorldApp(isInWorldApp()) }, [])
+
     const [divorceState, setDivorceState] = useState<DivorceState>("idle");
     const [claimState, setClaimState] = useState<ClaimState>("idle");
     const [error, setError] = useState<string | null>(null);
@@ -190,6 +203,17 @@ export function MarriageDashboard({
         }
     };
 
+    const handleOpenPartnerProfile = () => {
+        if (!isWorldApp) return
+        triggerProfileCard(dashboard.partner)
+    }
+
+    const handleChatWithPartner = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!isWorldApp) return
+        triggerDirectChat(partnerProfile.username ?? dashboard.partner)
+    }
+
     // Format TIME token balance (from wei to whole tokens)
     const timeBalance = Number(dashboard.timeBalance) / 1e18;
     const pendingYield = Number(dashboard.pendingYield) / 1e18;
@@ -237,17 +261,34 @@ export function MarriageDashboard({
 
                 {/* Partner Info Mini Card */}
                 <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between group hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                    {/* Tapping name/icon opens native World profile card */}
+                    <button
+                        onClick={handleOpenPartnerProfile}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
                             <Handshake size={20} className="text-gray-400" strokeWidth={2} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Partner</p>
-                            <p className="text-sm font-mono font-medium text-gray-700">
-                                {dashboard.partner.slice(0, 8)}...{dashboard.partner.slice(-6)}
-                            </p>
+                            {isPartnerLoading ? (
+                                <span className="block h-3 w-24 bg-gray-200 rounded animate-pulse mt-1" />
+                            ) : (
+                                <p className="text-sm font-mono font-medium text-gray-700 truncate" title={dashboard.partner}>
+                                    {partnerDisplayName}
+                                </p>
+                            )}
                         </div>
-                    </div>
+                    </button>
+                    {isWorldApp && (
+                        <button
+                            onClick={handleChatWithPartner}
+                            title="Chat with partner"
+                            className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-white hover:bg-gray-900 text-gray-400 hover:text-white transition-all shadow-sm ml-2"
+                        >
+                            <MessageCircle size={18} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Shared Wealth Section */}

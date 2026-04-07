@@ -14,12 +14,14 @@ import { useEffect, useState } from "react";
 import { useWalletAuth } from "@/lib/worldcoin/useWalletAuth";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
 import { useHydrated } from "@/lib/hooks/useHydrated";
+import { useWorldProfile, displayName } from "@/lib/worldcoin/useWorldProfile";
 
 const formatAddress = (addr: string) =>
   `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
 export function Header() {
   const { address, isConnected, isConnecting, connect, disconnect, error } = useWalletAuth();
+  const { profile } = useWorldProfile(isConnected ? address : null);
   const [isWorldApp, setIsWorldApp] = useState(false);
   const mounted = useHydrated();
 
@@ -88,9 +90,9 @@ export function Header() {
           {isConnected && address ? (
             // Connected state
             <div className="flex items-center gap-3">
-              <div className="px-4 py-2 bg-black/5 rounded-full">
+              <div className="px-4 py-2 bg-black/5 rounded-full" title={address}>
                 <p className="text-sm font-mono text-black">
-                  {formatAddress(address)}
+                  {displayName(address, profile.username)}
                 </p>
               </div>
               <button

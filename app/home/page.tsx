@@ -217,33 +217,7 @@ export default function HomePage() {
       {/* Main content - centered by default, top-aligned when married for 20px gap */}
       <main className={`flex-1 flex flex-col items-center justify-start px-6 pb-12`}>
         {!isMarried ? (
-          <div className="flex flex-col items-center text-center space-y-12 max-w-lg w-full">
-            {/* TIME balance from previous bond */}
-            {isConnected && dashboard && Number(dashboard.timeBalance) > 0 && (
-              <div className="w-full bg-[#1A1A1A] rounded-[2.5rem] p-8 space-y-6 shadow-2xl relative overflow-hidden animate-in zoom-in duration-500">
-                <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 blur-[50px]" />
-
-                <div className="flex items-center gap-3 relative z-10">
-                  <div className="w-12 h-12 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center text-white">
-                    <Coins size={24} />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-lg font-black text-white tracking-tight">Time Collected</h3>
-                    <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest">From past bonds</p>
-                  </div>
-                </div>
-
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 relative z-10">
-                  <div className="flex-1 text-left min-w-0 w-0">
-                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">Balance</p>
-                    <p className="text-[11px] font-mono font-bold text-amber-100 truncate overflow-hidden">
-                      {(Number(dashboard.timeBalance) / 1e18).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TIME
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
+          <div className="flex flex-col items-center text-center space-y-8 max-w-lg w-full pt-2">
             {/* Incoming Proposals Notifications */}
             {hasIncomingProposals && (
               <div className="w-full bg-white rounded-[2.5rem] p-8 space-y-6 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-rose-50 animate-in zoom-in duration-500">
@@ -385,6 +359,17 @@ export default function HomePage() {
                   <ImageIcon size={16} className="text-gray-400" />
                   <span>My Gallery</span>
                 </Link>
+
+                {/* TIME balance from previous bond — subtle footer pill */}
+                {dashboard && Number(dashboard.timeBalance) > 0 && (
+                  <div className="mt-2 inline-flex self-center items-center gap-2 px-3.5 py-1.5 bg-white/60 border border-gray-200/70 rounded-full text-gray-500 animate-in fade-in duration-700">
+                    <Coins size={11} className="text-amber-500/80" />
+                    <span className="text-[9px] font-bold uppercase tracking-[0.15em]">Time Collected</span>
+                    <span className="text-[9px] font-mono font-bold text-gray-700">
+                      {(Number(dashboard.timeBalance) / 1e18).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-1000">

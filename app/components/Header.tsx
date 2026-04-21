@@ -2,7 +2,7 @@
  * Purpose: Reusable Header component for HumanBond
  * Displays the logo in the top-left corner
  * Shows wallet connection button and address in the top-right
- * 
+ *
  * Uses walletAuth from MiniKit - NO backend SIWE verification needed
  */
 
@@ -11,6 +11,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useWalletAuth } from "@/lib/worldcoin/useWalletAuth";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
 import { useHydrated } from "@/lib/hooks/useHydrated";
@@ -105,7 +106,7 @@ export function Header() {
               </button>
             </div>
           ) : isWorldApp ? (
-            // In World App - show connect button
+            // In World App - show connect button + info
             <div className="flex items-center gap-2">
               <button
                 onClick={handleConnect}
@@ -129,7 +130,7 @@ export function Header() {
             </div>
           )}
         </div>
-        
+
         {/* Error toast */}
         {error && (
           <div className="absolute top-full mt-2 right-6 px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm shadow-lg">
@@ -138,10 +139,10 @@ export function Header() {
         )}
       </div>
 
-      {/* Connect Wallet info modal */}
-      {showWalletInfo && (
+      {/* Connect Wallet info modal — portal escapes backdrop-blur stacking context */}
+      {showWalletInfo && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4"
           onClick={() => setShowWalletInfo(false)}
         >
           <div
@@ -162,7 +163,7 @@ export function Header() {
             </p>
             <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
               <p className="text-xs font-bold text-black uppercase tracking-wider">Why it&apos;s safe</p>
-              <ul className="text-xs text-gray-500 space-y-1 list-none">
+              <ul className="text-xs text-gray-500 space-y-1">
                 <li>• Your private key never leaves World App</li>
                 <li>• The app only receives your public wallet address</li>
                 <li>• No funds are moved without your explicit approval</li>
@@ -170,7 +171,8 @@ export function Header() {
               </ul>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   );

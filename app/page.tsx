@@ -8,6 +8,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useWorldVerification } from "@/lib/worldcoin/useWorldVerification";
 import { WORLD_ACTIONS } from "@/lib/worldcoin/initMiniKit";
 import { useAuthStore } from "@/state/authStore";
@@ -174,10 +175,10 @@ export default function Home() {
         onOpenChange={setShowWorldAppDialog}
       />
 
-      {/* Verify World ID info modal */}
-      {showVerifyInfo && (
+      {/* Verify World ID info modal — portal to render above all layers */}
+      {showVerifyInfo && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4"
           onClick={() => setShowVerifyInfo(false)}
         >
           <div
@@ -194,11 +195,11 @@ export default function Home() {
               </button>
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Tapping <strong>Verify World ID</strong> confirms you are a unique human using the <strong>World ID</strong>  protocol — no documents, no personal data. It&apos;s the only gate into HumanBond.
+              Tapping <strong>Verify World ID</strong> confirms you are a unique human using the <strong>World ID</strong> protocol — no documents, no personal data. It&apos;s the only gate into HumanBond.
             </p>
             <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
               <p className="text-xs font-bold text-black uppercase tracking-wider">Why it&apos;s safe</p>
-              <ul className="text-xs text-gray-500 space-y-1 list-none">
+              <ul className="text-xs text-gray-500 space-y-1">
                 <li>• Uses zero-knowledge proofs — your identity stays private</li>
                 <li>• No name, email, or biometric data is shared with this app</li>
                 <li>• Worldcoin only confirms you&apos;re a real, unique person</li>
@@ -206,7 +207,8 @@ export default function Home() {
               </ul>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

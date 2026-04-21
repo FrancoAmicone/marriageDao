@@ -13,7 +13,7 @@ import { WORLD_ACTIONS } from "@/lib/worldcoin/initMiniKit";
 import { useAuthStore } from "@/state/authStore";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
 import Image from "next/image";
-import { ScanFace, Globe } from "lucide-react";
+import { ScanFace, Globe, Info, X } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import dynamic from "next/dynamic";
 
@@ -28,6 +28,7 @@ export default function Home() {
   const { setVerified, isVerified, checkVerificationExpiry } = useAuthStore();
   const [showError, setShowError] = useState<string | null>(null);
   const [showWorldAppDialog, setShowWorldAppDialog] = useState(false);
+  const [showVerifyInfo, setShowVerifyInfo] = useState(false);
   const isMounted = useHydrated();
 
   /**
@@ -126,23 +127,32 @@ export default function Home() {
 
           {/* Action Section */}
           <div className="w-full space-y-6">
-            <button
-              onClick={handleGetStarted}
-              disabled={isVerifying}
-              className="group w-full bg-black text-white px-8 py-5 rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-200 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isVerifying ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Verifying...</span>
-                </>
-              ) : (
-                <>
-                  <ScanFace size={20} className="text-white group-hover:text-emerald-400 transition-colors" />
-                  <span>{isVerified && checkVerificationExpiry() ? "Enter Protocol" : "Verify World ID"}</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleGetStarted}
+                disabled={isVerifying}
+                className="group flex-1 bg-black text-white px-8 py-5 rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-gray-900 transition-all duration-300 shadow-xl shadow-gray-200 flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isVerifying ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <ScanFace size={20} className="text-white group-hover:text-emerald-400 transition-colors" />
+                    <span>{isVerified && checkVerificationExpiry() ? "Enter Protocol" : "Verify World ID"}</span>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowVerifyInfo(true)}
+                className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+                aria-label="What is Verify World ID?"
+              >
+                <Info size={18} className="text-black/60" />
+              </button>
+            </div>
 
             <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               <Globe size={12} />
@@ -163,6 +173,41 @@ export default function Home() {
         isOpen={showWorldAppDialog}
         onOpenChange={setShowWorldAppDialog}
       />
+
+      {/* Verify World ID info modal */}
+      {showVerifyInfo && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => setShowVerifyInfo(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 space-y-4 shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-black">Verify World ID</h2>
+              <button
+                onClick={() => setShowVerifyInfo(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Tapping <strong>Verify World ID</strong> confirms you are a unique human using the <strong>World ID</strong>  protocol — no documents, no personal data. It&apos;s the only gate into HumanBond.
+            </p>
+            <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-bold text-black uppercase tracking-wider">Why it&apos;s safe</p>
+              <ul className="text-xs text-gray-500 space-y-1 list-none">
+                <li>• Uses zero-knowledge proofs — your identity stays private</li>
+                <li>• No name, email, or biometric data is shared with this app</li>
+                <li>• Worldcoin only confirms you&apos;re a real, unique person</li>
+                <li>• Verification is stored locally and expires after 24 hours</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

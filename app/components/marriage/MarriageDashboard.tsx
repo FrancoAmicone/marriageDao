@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
+import { sendNotification } from "@/lib/hooks/useNotify";
 import { UserDashboard } from "@/lib/worldcoin/useUserDashboard";
 import { useMarriageDetails, BondView, DissolutionRequest } from "@/lib/hooks/useMarriageDetails";
 import {
@@ -187,6 +188,7 @@ export function MarriageDashboard({
 
             setDissolutionTxState("success");
             if (onRefresh) onRefresh();
+            sendNotification(dashboard.partner, 'dissolution_requested');
         } catch (err) {
             setDissolutionTxState("error");
             setError(err instanceof Error ? err.message : "Failed to request dissolution");

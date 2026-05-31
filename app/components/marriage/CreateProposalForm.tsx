@@ -20,6 +20,7 @@ import { Sparkles, ScanFace, MessageCircle } from "lucide-react";
 import { decodeProof } from "@/lib/utils/decodeProof";
 import { useWorldProfile, resolveToAddress, triggerDirectChat } from "@/lib/worldcoin/useWorldProfile";
 import { APP_URL } from "@/lib/contracts";
+import { sendNotification } from "@/lib/hooks/useNotify";
 import dynamic from "next/dynamic";
 
 const PrenupModal = dynamic(() => import("./PrenupModal").then(m => m.PrenupModal), { ssr: false });
@@ -184,6 +185,7 @@ export function CreateProposalForm() {
 
       setState("success");
       setTxHash(txPayload.transaction_id || null);
+      sendNotification(resolvedAddress, 'proposal_received');
 
     } catch (err: any) {
       console.error("Proposal error:", err);
@@ -242,11 +244,23 @@ export function CreateProposalForm() {
                 </div>
               )}
               {resolvedUsername && resolvedAddress && !isResolving && (
-                <div className="flex items-center gap-2 px-4">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
-                    @{resolvedUsername} → {resolvedAddress.slice(0, 6)}…{resolvedAddress.slice(-4)}
-                  </span>
+                <div className="flex items-center justify-between px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                      @{resolvedUsername} → {resolvedAddress.slice(0, 6)}…{resolvedAddress.slice(-4)}
+                    </span>
+                  </div>
+                  {isWorldApp && (
+                    <button
+                      type="button"
+                      onClick={handleRemindInChat}
+                      className="flex items-center gap-1 text-[10px] font-black text-gray-400 hover:text-gray-700 uppercase tracking-widest transition-colors"
+                    >
+                      <MessageCircle size={12} />
+                      <span>Chat</span>
+                    </button>
+                  )}
                 </div>
               )}
               {resolveError && (

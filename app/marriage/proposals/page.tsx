@@ -22,6 +22,7 @@ import {
     XCircle,
 } from "lucide-react";
 import type { ProposalInfo } from "@/lib/hooks/useProposals";
+import { sendNotification } from "@/lib/hooks/useNotify";
 
 const PrenupModal = dynamic(() => import("@/app/components/marriage/PrenupModal").then(m => m.PrenupModal), { ssr: false });
 
@@ -102,6 +103,7 @@ function ProposalDetailCard({
 
             setCardState("success_accept");
             onSuccess();
+            sendNotification(proposal.proposer, 'proposal_accepted');
         } catch (err) {
             setCardState("error");
             setError(err instanceof Error ? err.message : "Something went wrong");
@@ -278,7 +280,7 @@ export default function ProposalsPage() {
         <main className="min-h-screen bg-[#E8E8E8] pb-24">
             {/* Sticky header */}
             <div className="bg-[#E8E8E8]/80 backdrop-blur-xl sticky top-0 z-50 border-b border-gray-200/50">
-                <div className="max-w-2xl mx-auto px-6 h-20 flex items-center justify-between">
+                <div className="max-w-2xl mx-auto px-6 h-14 flex items-center justify-between">
                     <button
                         onClick={() => router.push("/home")}
                         className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-100 text-gray-600 hover:text-black hover:scale-105 active:scale-95 transition-all"
@@ -297,7 +299,7 @@ export default function ProposalsPage() {
                 </div>
             </div>
 
-            <div className="max-w-2xl mx-auto px-6 py-8 space-y-4">
+            <div className="max-w-2xl mx-auto px-6 py-5 space-y-4">
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-16 space-y-4">
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-black" />

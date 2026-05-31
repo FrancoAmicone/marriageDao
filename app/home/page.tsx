@@ -181,7 +181,7 @@ export default function HomePage() {
       {/* Main content - centered by default, top-aligned when married for 20px gap */}
       <main className={`flex-1 flex flex-col items-center justify-center px-6 py-8`}>
         {!isBonded ? (
-          <div className="flex flex-col items-center text-center space-y-8 max-w-lg w-full">
+          <div className="flex flex-col items-center text-center space-y-4 max-w-lg w-full">
             {/* Incoming Proposals — compact notification card */}
             {hasIncomingProposals && (
               <Link

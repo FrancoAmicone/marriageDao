@@ -7,8 +7,6 @@ import { wagmiConfig } from '@/lib/wagmi/config';
 export type ProposalInfo = {
     proposer: `0x${string}`;
     proposed: `0x${string}`;
-    proposerNullifier: bigint;
-    accepted: boolean;
     timestamp: bigint;
 };
 

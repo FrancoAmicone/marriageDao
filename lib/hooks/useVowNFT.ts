@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useWalletAuth } from '@/lib/worldcoin/useWalletAuth';
-import { CONTRACT_ADDRESSES, VOW_NFT_ABI } from '@/lib/contracts';
+import { CONTRACT_ADDRESSES, BOND_NFT_ABI } from '@/lib/contracts';
 import { readContract, getPublicClient } from '@wagmi/core';
 import { wagmiConfig } from '@/lib/wagmi/config';
 import { parseAbiItem } from 'viem';
@@ -12,11 +12,11 @@ export type VowNFTData = {
     metadata: any;
 };
 
-async function fetchSingleVow(tokenId: bigint): Promise<VowNFTData | null> {
+async function fetchSingleBondNFT(tokenId: bigint): Promise<VowNFTData | null> {
     try {
         const tokenURI = await readContract(wagmiConfig, {
-            address: CONTRACT_ADDRESSES.VOW_NFT as `0x${string}`,
-            abi: VOW_NFT_ABI,
+            address: CONTRACT_ADDRESSES.BOND_NFT as `0x${string}`,
+            abi: BOND_NFT_ABI,
             functionName: 'tokenURI',
             args: [tokenId],
         }) as string;
@@ -25,21 +25,21 @@ async function fetchSingleVow(tokenId: bigint): Promise<VowNFTData | null> {
         try {
             metadata = await parseTokenMetadata(tokenURI);
         } catch {
-            console.error(`Failed to fetch metadata for vow token ${tokenId}`);
+            console.error(`Failed to fetch metadata for bond token ${tokenId}`);
         }
 
         return { tokenId, tokenURI, metadata };
     } catch (e) {
-        console.error(`Failed to fetch vow token ${tokenId}`, e);
+        console.error(`Failed to fetch bond token ${tokenId}`, e);
         return null;
     }
 }
 
-async function fetchAllVowNFTs(address: `0x${string}`): Promise<VowNFTData[]> {
+async function fetchAllBondNFTs(address: `0x${string}`): Promise<VowNFTData[]> {
     const publicClient = getPublicClient(wagmiConfig);
 
     const logs = await publicClient.getLogs({
-        address: CONTRACT_ADDRESSES.VOW_NFT as `0x${string}`,
+        address: CONTRACT_ADDRESSES.BOND_NFT as `0x${string}`,
         event: parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'),
         args: {
             to: address,
@@ -54,7 +54,7 @@ async function fetchAllVowNFTs(address: `0x${string}`): Promise<VowNFTData[]> {
         .map(log => log.args.tokenId)
         .filter((id): id is bigint => id !== undefined);
 
-    const results = await Promise.all(tokenIds.map(fetchSingleVow));
+    const results = await Promise.all(tokenIds.map(fetchSingleBondNFT));
     const tokensData = results.filter((r): r is VowNFTData => r !== null);
     tokensData.sort((a, b) => Number(b.tokenId) - Number(a.tokenId));
     return tokensData;
@@ -64,8 +64,8 @@ export function useVowNFT() {
     const { address, isConnected } = useWalletAuth();
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['vowNFTs', address],
-        queryFn: () => fetchAllVowNFTs(address as `0x${string}`),
+        queryKey: ['bondNFTs', address],
+        queryFn: () => fetchAllBondNFTs(address as `0x${string}`),
         enabled: isConnected && !!address,
         staleTime: 60_000,
     });
@@ -73,6 +73,6 @@ export function useVowNFT() {
     return {
         vowNFTs: data ?? [],
         isLoading,
-        error: error ? (error instanceof Error ? error.message : 'Failed to fetch Vow NFTs') : null,
+        error: error ? (error instanceof Error ? error.message : 'Failed to fetch Bond NFTs') : null,
     };
 }

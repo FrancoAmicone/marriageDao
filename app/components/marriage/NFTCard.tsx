@@ -17,8 +17,8 @@ interface NFTCardProps {
     customMetadata?: {
         partnerA?: string;
         partnerB?: string;
-        marriageDate?: string;
-        marriageId?: string;
+        bondDate?: string;
+        bondId?: string;
     };
 }
 
@@ -102,13 +102,13 @@ export function NFTCard({ image, name, description, tokenId, year, customMetadat
                 {/* Custom Metadata for Marriage NFTs */}
                 {customMetadata && (
                     <div className="space-y-2.5 pt-4 border-t border-gray-50">
-                        {customMetadata.marriageDate && (
+                        {customMetadata.bondDate && (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5 text-gray-400">
                                     <Calendar size={12} />
                                     <span className="text-[10px] font-bold uppercase tracking-wider">Bond Date</span>
                                 </div>
-                                <span className="text-[11px] text-gray-800 font-black">{customMetadata.marriageDate}</span>
+                                <span className="text-[11px] text-gray-800 font-black">{customMetadata.bondDate}</span>
                             </div>
                         )}
                         {(customMetadata.partnerA || customMetadata.partnerB) && (
@@ -137,14 +137,14 @@ export function NFTCard({ image, name, description, tokenId, year, customMetadat
                                 </div>
                             </div>
                         )}
-                        {customMetadata.marriageId && (
+                        {customMetadata.bondId && (
                             <div className="flex items-center justify-between pt-1 border-t border-gray-50/50">
                                 <div className="flex items-center gap-1.5 text-gray-300">
                                     <Clock size={10} />
                                     <span className="text-[9px] font-bold uppercase tracking-wider">Proof ID</span>
                                 </div>
                                 <span className="text-[9px] font-mono text-gray-400 truncate max-w-[120px]">
-                                    {customMetadata.marriageId}
+                                    {customMetadata.bondId}
                                 </span>
                             </div>
                         )}

@@ -18,7 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
           {!isGalleryPage && <Header />}
-          <div className={isGalleryPage ? "pt-0" : "pt-[160px]"}>
+          <div className={isGalleryPage ? "pt-0" : "pt-20"}>
             {children}
           </div>
         </QueryClientProvider>

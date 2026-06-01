@@ -1,9 +1,3 @@
-/**
- * Marriage Dashboard Component
- * Displays marriage information when user is bonded
- * Shows partner, TIME tokens, and divorce option
- */
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -12,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { MiniKit } from "@worldcoin/minikit-js";
 import { CONTRACT_ADDRESSES, HUMAN_BOND_ABI } from "@/lib/contracts";
 import { useAuthStore } from "@/state/authStore";
+import { sendNotification } from "@/lib/hooks/useNotify";
 import { UserDashboard } from "@/lib/worldcoin/useUserDashboard";
-import { useMarriageDetails } from "@/lib/hooks/useMarriageDetails";
+import { useMarriageDetails, BondView, DissolutionRequest } from "@/lib/hooks/useMarriageDetails";
 import {
     Coins,
     TrendingUp,
@@ -24,19 +19,20 @@ import {
     ChevronRight,
     Sparkles,
     MessageCircle,
+    AlertTriangle,
+    Timer,
 } from "lucide-react";
 import { useWorldProfile, displayName, triggerDirectChat, triggerProfileCard } from "@/lib/worldcoin/useWorldProfile";
 import { isInWorldApp } from "@/lib/worldcoin/initMiniKit";
-import { APP_URL } from "@/lib/contracts";
-import { MarriageView } from "@/lib/hooks/useMarriageDetails";
 
-type DivorceState = "idle" | "sending" | "success" | "error";
 type ClaimState = "idle" | "sending" | "success" | "error";
+type DissolutionTxState = "idle" | "sending" | "success" | "error";
 
 interface MarriageDashboardProps {
     dashboard: UserDashboard;
-    onRefresh?: () => void; // Callback to refresh dashboard data
-    marriageView?: MarriageView | null;
+    onRefresh?: () => void;
+    marriageView?: BondView | null;
+    dissolutionRequest?: DissolutionRequest | null;
     isMarriageLoading?: boolean;
 }
 
@@ -44,6 +40,7 @@ export function MarriageDashboard({
     dashboard,
     onRefresh,
     marriageView: propsMarriageView,
+    dissolutionRequest: propsDissolutionRequest,
     isMarriageLoading: propsIsMarriageLoading
 }: MarriageDashboardProps) {
     const router = useRouter();
@@ -52,34 +49,29 @@ export function MarriageDashboard({
     const { profile: partnerProfile, isLoading: isPartnerLoading } = useWorldProfile(dashboard.partner)
     const partnerDisplayName = displayName(dashboard.partner, partnerProfile.username)
 
-    // Detect World App on client only — component is loaded ssr:false so no hydration risk,
-    // but we use useEffect for consistency with the rest of the codebase
     const [isWorldApp, setIsWorldApp] = useState(false)
     useEffect(() => { setIsWorldApp(isInWorldApp()) }, [])
 
-    const [divorceState, setDivorceState] = useState<DivorceState>("idle");
+    const [dissolutionTxState, setDissolutionTxState] = useState<DissolutionTxState>("idle");
     const [claimState, setClaimState] = useState<ClaimState>("idle");
     const [error, setError] = useState<string | null>(null);
     const [claimError, setClaimError] = useState<string | null>(null);
     const [showConfirm, setShowConfirm] = useState(false);
 
-    // Fetch detailed marriage information
-    const { marriageView: internalMarriageView, isLoading: internalIsMarriageLoading } = useMarriageDetails(
+    const { marriageView: internalMarriageView, dissolutionRequest: internalDissolutionRequest, isLoading: internalIsMarriageLoading } = useMarriageDetails(
         !propsMarriageView ? (dashboard.partner as `0x${string}` | null) : null
     );
 
     const marriageView = propsMarriageView || internalMarriageView;
+    const dissolutionRequest = propsDissolutionRequest ?? internalDissolutionRequest;
     const isMarriageLoading = propsIsMarriageLoading ?? internalIsMarriageLoading;
 
-    // Real-time interpolated pending yield
     const [interpolatedYield, setInterpolatedYield] = useState<number>(0);
 
-    // Calculate time together and next milestone
     const marriageStats = useMemo(() => {
         if (!marriageView) return null;
 
         const bondStartDate = new Date(Number(marriageView.bondStart) * 1000);
-        const lastClaimDate = new Date(Number(marriageView.lastClaim) * 1000);
         const now = new Date();
         const msInDay = 1000 * 60 * 60 * 24;
         const msInYear = msInDay * 365.25;
@@ -90,24 +82,21 @@ export function MarriageDashboard({
         const lastMilestone = Number(marriageView.lastMilestoneYear);
         const nextMilestone = lastMilestone + 1;
 
-        // Calculate next anniversary date
         const nextAnniversary = new Date(bondStartDate);
         nextAnniversary.setFullYear(bondStartDate.getFullYear() + nextMilestone);
         const daysToAnniversary = Math.ceil((nextAnniversary.getTime() - now.getTime()) / msInDay);
 
         return {
             bondStartDate,
-            lastClaimDate,
             daysTogether,
             yearsTogether,
             lastMilestone,
             nextMilestone,
             daysToAnniversary,
-            marriageId: marriageView.marriageId,
+            bondId: marriageView.bondId,
         };
     }, [marriageView]);
 
-    // Real-time interpolation effect
     useEffect(() => {
         if (!marriageView) return;
 
@@ -115,14 +104,33 @@ export function MarriageDashboard({
             const now = Date.now() / 1000;
             const lastClaim = Number(marriageView.lastClaim);
             const secondsSinceClaim = now - lastClaim;
-
-            // 1 TIME token per day = 1 / 86400 tokens per second
             const currentYield = Math.max(0, secondsSinceClaim * (1 / 86400));
             setInterpolatedYield(currentYield);
-        }, 100); // Update every 100ms for smooth animation
+        }, 100);
 
         return () => clearInterval(interval);
     }, [marriageView]);
+
+    // Dissolution helpers
+    const dissolutionDelaySeconds = 3 * 24 * 60 * 60; // 3 days default
+    const isDissolutionPending = dissolutionRequest?.active ?? false;
+    const isRequester = isDissolutionPending &&
+        dissolutionRequest?.requester?.toLowerCase() === walletAddress?.toLowerCase();
+    const requestedAt = isDissolutionPending ? Number(dissolutionRequest!.requestedAt) : 0;
+    const executeAvailableAt = requestedAt + dissolutionDelaySeconds;
+    const canExecute = isDissolutionPending && Date.now() / 1000 >= executeAvailableAt;
+
+    const [nowTs, setNowTs] = useState(Date.now() / 1000);
+    useEffect(() => {
+        if (!isDissolutionPending) return;
+        const id = setInterval(() => setNowTs(Date.now() / 1000), 1000);
+        return () => clearInterval(id);
+    }, [isDissolutionPending]);
+
+    const secondsRemaining = Math.max(0, executeAvailableAt - nowTs);
+    const daysRemaining = Math.floor(secondsRemaining / 86400);
+    const hoursRemaining = Math.floor((secondsRemaining % 86400) / 3600);
+    const minutesRemaining = Math.floor((secondsRemaining % 3600) / 60);
 
     const handleClaim = async () => {
         if (!dashboard.partner || !walletAddress) {
@@ -140,91 +148,123 @@ export function MarriageDashboard({
             setClaimError(null);
 
             const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-                transaction: [
-                    {
-                        address: CONTRACT_ADDRESSES.HUMAN_BOND,
-                        abi: HUMAN_BOND_ABI,
-                        functionName: "claimYield",
-                        args: [dashboard.partner],
-                    },
-                ],
+                transaction: [{
+                    address: CONTRACT_ADDRESSES.HUMAN_BOND,
+                    abi: HUMAN_BOND_ABI,
+                    functionName: "claimYield",
+                    args: [dashboard.partner],
+                }],
             });
 
-            if (finalPayload.status === "error") {
-                throw new Error("Claim transaction failed");
-            }
+            if (finalPayload.status === "error") throw new Error("Claim transaction failed");
 
             setClaimState("success");
-
-            // Call callback to refresh dashboard
-            if (onRefresh) {
-                onRefresh();
-            }
+            if (onRefresh) onRefresh();
         } catch (err) {
             setClaimState("error");
             setClaimError(err instanceof Error ? err.message : "Failed to claim tokens");
         }
     };
 
-    const handleDivorce = async () => {
+    const handleRequestDissolution = async () => {
         if (!dashboard.partner || !walletAddress) {
             setError("Missing partner or wallet information");
             return;
         }
-
         try {
-            setDivorceState("sending");
+            setDissolutionTxState("sending");
             setError(null);
 
             const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-                transaction: [
-                    {
-                        address: CONTRACT_ADDRESSES.HUMAN_BOND,
-                        abi: HUMAN_BOND_ABI,
-                        functionName: "divorce",
-                        args: [dashboard.partner],
-                    },
-                ],
+                transaction: [{
+                    address: CONTRACT_ADDRESSES.HUMAN_BOND,
+                    abi: HUMAN_BOND_ABI,
+                    functionName: "requestDissolution",
+                    args: [dashboard.partner],
+                }],
             });
 
-            if (finalPayload.status === "error") {
-                throw new Error("Divorce transaction failed");
-            }
+            if (finalPayload.status === "error") throw new Error("Transaction failed");
 
-            setDivorceState("success");
-            // Don't close modal or refresh yet - wait for user to click Continue
-            // setShowConfirm(false);
-            // if (onRefresh) {
-            //     onRefresh();
-            // }
+            setDissolutionTxState("success");
+            if (onRefresh) onRefresh();
+            sendNotification(dashboard.partner, 'dissolution_requested');
         } catch (err) {
-            setDivorceState("error");
-            setError(err instanceof Error ? err.message : "Failed to divorce");
+            setDissolutionTxState("error");
+            setError(err instanceof Error ? err.message : "Failed to request dissolution");
+        }
+    };
+
+    const handleCancelDissolution = async () => {
+        if (!dashboard.partner || !walletAddress) return;
+        try {
+            setDissolutionTxState("sending");
+            setError(null);
+
+            const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+                transaction: [{
+                    address: CONTRACT_ADDRESSES.HUMAN_BOND,
+                    abi: HUMAN_BOND_ABI,
+                    functionName: "cancelDissolutionRequest",
+                    args: [dashboard.partner],
+                }],
+            });
+
+            if (finalPayload.status === "error") throw new Error("Transaction failed");
+
+            setDissolutionTxState("idle");
+            setShowConfirm(false);
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            setDissolutionTxState("error");
+            setError(err instanceof Error ? err.message : "Failed to cancel dissolution");
+        }
+    };
+
+    const handleExecuteDissolution = async () => {
+        if (!dashboard.partner || !walletAddress) return;
+        try {
+            setDissolutionTxState("sending");
+            setError(null);
+
+            const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+                transaction: [{
+                    address: CONTRACT_ADDRESSES.HUMAN_BOND,
+                    abi: HUMAN_BOND_ABI,
+                    functionName: "executeDissolution",
+                    args: [dashboard.partner],
+                }],
+            });
+
+            if (finalPayload.status === "error") throw new Error("Transaction failed");
+
+            setDissolutionTxState("success");
+        } catch (err) {
+            setDissolutionTxState("error");
+            setError(err instanceof Error ? err.message : "Failed to execute dissolution");
         }
     };
 
     const handleOpenPartnerProfile = () => {
-        if (!isWorldApp) return
-        triggerProfileCard(dashboard.partner)
-    }
+        if (!isWorldApp) return;
+        triggerProfileCard(dashboard.partner);
+    };
 
     const handleChatWithPartner = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (!isWorldApp) return
-        triggerDirectChat(partnerProfile.username ?? dashboard.partner)
-    }
+        e.stopPropagation();
+        if (!isWorldApp) return;
+        triggerDirectChat(partnerProfile.username ?? dashboard.partner);
+    };
 
-    // Format TIME token balance (from wei to whole tokens)
     const timeBalance = Number(dashboard.timeBalance) / 1e18;
     const pendingYield = Number(dashboard.pendingYield) / 1e18;
 
-    // Show loading state while fetching marriage details - only if not handled by parent
     if (isMarriageLoading && !propsMarriageView) {
         return (
             <div className="w-full max-w-2xl flex items-center justify-center py-12">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-                    <p className="text-black/70">Loading marriage details...</p>
+                    <p className="text-black/70">Loading bond details...</p>
                 </div>
             </div>
         );
@@ -232,23 +272,68 @@ export function MarriageDashboard({
 
     return (
         <div className="w-full max-w-2xl space-y-6">
-            {/* Marriage Status Card */}
+            {/* Dissolution Pending Banner */}
+            {isDissolutionPending && (
+                <div className={`rounded-2xl p-4 border flex items-start gap-3 ${
+                    isRequester
+                        ? canExecute
+                            ? "bg-red-50 border-red-200"
+                            : "bg-amber-50 border-amber-200"
+                        : "bg-orange-50 border-orange-200"
+                }`}>
+                    <AlertTriangle size={18} className={canExecute ? "text-red-500 mt-0.5" : "text-amber-500 mt-0.5"} />
+                    <div className="flex-1 min-w-0">
+                        {isRequester ? (
+                            canExecute ? (
+                                <p className="text-xs font-bold text-red-700">Dissolution ready — you can execute it now.</p>
+                            ) : (
+                                <>
+                                    <p className="text-xs font-bold text-amber-800">You requested dissolution.</p>
+                                    <p className="text-[10px] text-amber-700 mt-0.5 flex items-center gap-1">
+                                        <Timer size={10} />
+                                        {daysRemaining}d {hoursRemaining}h {minutesRemaining}m remaining
+                                    </p>
+                                </>
+                            )
+                        ) : (
+                            <>
+                                <p className="text-xs font-bold text-orange-800">Your partner requested dissolution.</p>
+                                <p className="text-[10px] text-orange-700 mt-0.5 flex items-center gap-1">
+                                    <Timer size={10} />
+                                    {canExecute ? "Delay period met." : `${daysRemaining}d ${hoursRemaining}h ${minutesRemaining}m remaining`}
+                                </p>
+                            </>
+                        )}
+                    </div>
+                    {isRequester && !canExecute && (
+                        <button
+                            onClick={() => setShowConfirm(true)}
+                            className="text-[10px] font-black text-amber-600 uppercase tracking-widest whitespace-nowrap"
+                        >
+                            Cancel
+                        </button>
+                    )}
+                    {isRequester && canExecute && (
+                        <button
+                            onClick={() => setShowConfirm(true)}
+                            className="text-[10px] font-black text-red-600 uppercase tracking-widest whitespace-nowrap"
+                        >
+                            Execute
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Bond Status Card */}
             <div className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-8 relative overflow-hidden">
-                {/* Decorative Pattern */}
                 <div className="absolute top-10 right-0 p-4 opacity-[0.03]">
                     <Handshake size={120} className="text-gray-900 rotate-12" />
                 </div>
 
-                {/* Header Section */}
+                {/* Header */}
                 <div className="text-center space-y-3 relative">
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-2 overflow-hidden">
-                        <Image
-                            src="/Isotype.png"
-                            alt="HumanBond"
-                            width={56}
-                            height={56}
-                            className="h-14 w-14 object-contain"
-                        />
+                        <Image src="/Isotype.png" alt="HumanBond" width={56} height={56} className="h-14 w-14 object-contain" />
                     </div>
                     <h3 className="text-3xl font-bold tracking-tight text-gray-900">You are Bonded!</h3>
                     {marriageStats && (
@@ -259,9 +344,8 @@ export function MarriageDashboard({
                     )}
                 </div>
 
-                {/* Partner Info Mini Card */}
+                {/* Partner Info */}
                 <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between group hover:bg-gray-100 transition-colors">
-                    {/* Tapping name/icon opens native World profile card */}
                     <button
                         onClick={handleOpenPartnerProfile}
                         className="flex items-center gap-3 flex-1 min-w-0 text-left"
@@ -291,7 +375,7 @@ export function MarriageDashboard({
                     )}
                 </div>
 
-                {/* Shared Wealth Section */}
+                {/* Shared Wealth */}
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                         <Sparkles size={18} className="text-amber-500" />
@@ -299,12 +383,11 @@ export function MarriageDashboard({
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
-                        {/* Wallet Balance Card */}
+                        {/* Harvested balance */}
                         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-5 border border-amber-100/50 shadow-sm relative overflow-hidden group">
                             <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
                                 <Coins size={100} className="text-amber-600" />
                             </div>
-
                             <div className="relative space-y-1">
                                 <span className="text-[11px] font-bold uppercase tracking-widest text-amber-700/70">Harvested Time</span>
                                 <div className="flex items-baseline gap-2">
@@ -317,7 +400,7 @@ export function MarriageDashboard({
                             </div>
                         </div>
 
-                        {/* Growing Future Card */}
+                        {/* Growing yield */}
                         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="space-y-1">
@@ -339,7 +422,7 @@ export function MarriageDashboard({
                                     <div
                                         className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-linear"
                                         style={{ width: `${(interpolatedYield % 1) * 100}%` }}
-                                    ></div>
+                                    />
                                 </div>
                                 <div className="flex justify-between text-[10px] font-bold text-gray-400 px-1">
                                     <span>HARVESTING...</span>
@@ -371,7 +454,7 @@ export function MarriageDashboard({
                                         <div className="mt-3 py-2 px-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
                                             <Sparkles size={14} className="text-emerald-500" />
                                             <p className="text-[11px] font-semibold text-emerald-700">
-                                                Tokens claimed successfully! Divided between both partners.
+                                                Tokens claimed! Divided between both partners.
                                             </p>
                                         </div>
                                     )}
@@ -385,7 +468,7 @@ export function MarriageDashboard({
                     </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Actions */}
                 <div className="pt-4 space-y-3">
                     <button
                         onClick={() => router.push("/marriage/gallery")}
@@ -400,12 +483,14 @@ export function MarriageDashboard({
                         <ChevronRight size={18} className="text-gray-300" />
                     </button>
 
-                    <button
-                        onClick={() => setShowConfirm(true)}
-                        className="w-full py-3 text-xs font-bold text-red-400 hover:text-red-500 transition-colors uppercase tracking-widest h-12"
-                    >
-                        Dissolve Bond
-                    </button>
+                    {!isDissolutionPending && (
+                        <button
+                            onClick={() => setShowConfirm(true)}
+                            className="w-full py-3 text-xs font-bold text-red-400 hover:text-red-500 transition-colors uppercase tracking-widest h-12"
+                        >
+                            Dissolve Bond
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -446,83 +531,91 @@ export function MarriageDashboard({
                             <div
                                 className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full"
                                 style={{ width: `${100 - (marriageStats.daysToAnniversary / 365.25) * 100}%` }}
-                            ></div>
+                            />
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Additional Info Grid */}
+            {/* Info Grid */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
                     <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
                         <Coins size={16} className="text-amber-500" />
                     </div>
-                    <p className="text-xs font-bold text-gray-800 leading-tight">
-                        Shared
-                        <br />
-                        1 TIME / Day
-                    </p>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">Shared<br />1 TIME / Day</p>
                 </div>
                 <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
                     <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden p-1">
                         <Image src="/Isotype.png" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
                     </div>
-                    <p className="text-xs font-bold text-gray-800 leading-tight">
-                        Unique
-                        <br />
-                        Vow NFTs
-                    </p>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">Unique<br />Bond NFTs</p>
                 </div>
             </div>
 
-            {/* Marriage ID Footer */}
+            {/* Bond ID Footer */}
             {marriageStats && (
                 <div className="px-6 py-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Clock size={14} className="text-gray-400" />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Marriage ID</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bond ID</span>
                     </div>
-                    <p className="text-[10px] font-mono text-gray-400 truncate max-w-[150px]">{marriageStats.marriageId}</p>
+                    <p className="text-[10px] font-mono text-gray-400 truncate max-w-[150px]">{marriageStats.bondId}</p>
                 </div>
             )}
 
-            {/* Divorce Confirmation Popup */}
+            {/* Dissolution Modal */}
             {showConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div
                         className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity"
-                        onClick={() => !divorceState.includes("sending") && divorceState !== "success" && setShowConfirm(false)}
+                        onClick={() => dissolutionTxState !== "sending" && dissolutionTxState !== "success" && setShowConfirm(false)}
                     />
 
                     <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in fade-in zoom-in duration-300">
                         <div className="flex justify-center">
-                            <div
-                                className={`w-20 h-20 rounded-full flex items-center justify-center ${
-                                    divorceState === "success" ? "bg-emerald-50 text-emerald-500" : "bg-red-50 text-red-500"
-                                }`}
-                            >
-                                {divorceState === "success" ? (
-                                    <Sparkles size={40} />
-                                ) : (
-                                    <Handshake size={40} className="text-red-500" strokeWidth={2} />
-                                )}
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
+                                dissolutionTxState === "success" ? "bg-emerald-50 text-emerald-500"
+                                : (isDissolutionPending && isRequester && canExecute) ? "bg-red-50 text-red-500"
+                                : "bg-amber-50 text-amber-500"
+                            }`}>
+                                {dissolutionTxState === "success" ? <Sparkles size={40} />
+                                    : isDissolutionPending ? <Timer size={40} />
+                                    : <Handshake size={40} strokeWidth={2} />}
                             </div>
                         </div>
 
                         <div className="text-center space-y-2">
-                            <h3 className="text-2xl font-black text-gray-900 tracking-tight">
-                                {divorceState === "success" ? "Bond Dissolved" : "End the Bond?"}
-                            </h3>
-
-                            {divorceState !== "success" ? (
-                                <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                    Are you sure? This will end your daily rewards and distribute all pending TIME tokens to both wallets.
-                                </p>
+                            {dissolutionTxState === "success" ? (
+                                <>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Done</h3>
+                                    <p className="text-sm text-emerald-600 font-bold">
+                                        {isDissolutionPending && canExecute
+                                            ? "Bond dissolved. Pending yield distributed."
+                                            : "Dissolution request cancelled."}
+                                    </p>
+                                </>
+                            ) : isDissolutionPending && isRequester && canExecute ? (
+                                <>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Execute Dissolution?</h3>
+                                    <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                        The 3-day waiting period has passed. This will dissolve the bond and distribute all pending TIME tokens.
+                                    </p>
+                                </>
+                            ) : isDissolutionPending && isRequester && !canExecute ? (
+                                <>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Cancel Request?</h3>
+                                    <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                        Your dissolution request is pending. You have {daysRemaining}d {hoursRemaining}h {minutesRemaining}m left to cancel.
+                                    </p>
+                                </>
                             ) : (
-                                <p className="text-sm text-emerald-600 font-bold">
-                                    Freedom found. Your shared wealth has been harvested and distributed.
-                                </p>
+                                <>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Start Dissolution?</h3>
+                                    <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                        This starts a 3-day waiting period. After 3 days, you can execute the dissolution. You can cancel anytime before executing.
+                                    </p>
+                                </>
                             )}
                         </div>
 
@@ -533,28 +626,63 @@ export function MarriageDashboard({
                         )}
 
                         <div className="flex flex-col gap-3 pt-2">
-                            {divorceState === "success" ? (
+                            {dissolutionTxState === "success" ? (
                                 <button
                                     onClick={() => {
                                         setShowConfirm(false);
+                                        setDissolutionTxState("idle");
                                         if (onRefresh) onRefresh();
                                     }}
                                     className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-gray-900 hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
                                 >
-                                    Return to Home
+                                    Close
                                 </button>
-                            ) : (
+                            ) : isDissolutionPending && isRequester && canExecute ? (
                                 <>
                                     <button
-                                        onClick={handleDivorce}
-                                        disabled={divorceState === "sending"}
+                                        onClick={handleExecuteDissolution}
+                                        disabled={dissolutionTxState === "sending"}
                                         className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-red-500 hover:bg-red-600 transition-all active:scale-95 shadow-lg shadow-red-200 disabled:opacity-50"
                                     >
-                                        {divorceState === "sending" ? "Processing..." : "Confirm Dissolution"}
+                                        {dissolutionTxState === "sending" ? "Processing..." : "Confirm Dissolution"}
                                     </button>
                                     <button
                                         onClick={() => setShowConfirm(false)}
-                                        disabled={divorceState === "sending"}
+                                        disabled={dissolutionTxState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+                                    >
+                                        Not yet
+                                    </button>
+                                </>
+                            ) : isDissolutionPending && isRequester && !canExecute ? (
+                                <>
+                                    <button
+                                        onClick={handleCancelDissolution}
+                                        disabled={dissolutionTxState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-amber-500 hover:bg-amber-600 transition-all active:scale-95 disabled:opacity-50"
+                                    >
+                                        {dissolutionTxState === "sending" ? "Processing..." : "Cancel Request"}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowConfirm(false)}
+                                        disabled={dissolutionTxState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+                                    >
+                                        Keep waiting
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={handleRequestDissolution}
+                                        disabled={dissolutionTxState === "sending"}
+                                        className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-red-500 hover:bg-red-600 transition-all active:scale-95 shadow-lg shadow-red-200 disabled:opacity-50"
+                                    >
+                                        {dissolutionTxState === "sending" ? "Processing..." : "Start 3-Day Process"}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowConfirm(false)}
+                                        disabled={dissolutionTxState === "sending"}
                                         className="w-full py-4 px-6 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
                                     >
                                         Keep the bond

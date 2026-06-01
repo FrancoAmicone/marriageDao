@@ -99,8 +99,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex flex-col relative overflow-hidden">
       {/* Main content - centered */}
-      <main className="flex-1 flex flex-col items-center justify-start px-6 relative z-10">
-        <div className="flex flex-col items-center text-center space-y-12 max-w-sm mx-auto">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
+        <div className="flex flex-col items-center text-center space-y-6 max-w-sm mx-auto">
 
           {/* Logo / Image */}
           <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.05)] mb-4 animate-in fade-in zoom-in duration-700">

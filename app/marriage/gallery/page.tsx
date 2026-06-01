@@ -62,24 +62,18 @@ export default function GalleryPage() {
 
     return (
         <main className="min-h-screen bg-[#E8E8E8] pb-24">
-            {/* Page Header */}
-            <div className="bg-[#E8E8E8]/80 backdrop-blur-xl sticky top-0 z-50 border-b border-gray-200/50">
-                <div className="max-w-2xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <button
-                        onClick={() => router.push('/home')}
-                        className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-100 text-gray-600 hover:text-black hover:scale-105 active:scale-95 transition-all"
-                    >
-                        <ChevronLeft size={20} />
-                    </button>
-                    <div className="text-center">
-                        <h1 className="font-black text-xl text-gray-900 tracking-tight">Gallery</h1>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Our Eternal Memories</p>
-                    </div>
-                    <div className="w-10"></div>
-                </div>
+            {/* Slim back row */}
+            <div className="px-5 pt-3 pb-1 flex items-center gap-3">
+                <button
+                    onClick={() => router.push('/home')}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-100 text-gray-600 hover:text-black active:scale-95 transition-all"
+                >
+                    <ChevronLeft size={18} />
+                </button>
+                <span className="font-black text-base text-gray-900 tracking-tight">Gallery</span>
             </div>
 
-            <div className="max-w-2xl mx-auto px-6 py-8 space-y-8">
+            <div className="max-w-2xl mx-auto px-6 pt-3 pb-5 space-y-8">
 
                 {/* Loading State */}
                 {isLoading ? (
@@ -93,7 +87,7 @@ export default function GalleryPage() {
                         {(vowError || milestonesError) && (
                             <div className="bg-white rounded-2xl p-4 shadow-lg border border-red-300">
                                 <div className="font-bold mb-2 text-sm text-black">Error Loading NFTs</div>
-                                {vowError && <div className="text-sm text-gray-600">Vow NFT: {vowError}</div>}
+                                {vowError && <div className="text-sm text-gray-600">Bond NFT: {vowError}</div>}
                                 {milestonesError && <div className="text-sm text-gray-600">Milestones: {milestonesError}</div>}
                             </div>
                         )}
@@ -102,7 +96,7 @@ export default function GalleryPage() {
                         <section className="space-y-6">
                             <div className="flex items-center gap-2 px-1">
                                 <Heart size={20} className="text-pink-500 fill-pink-500" />
-                                <h2 className="text-xl font-black text-gray-900 tracking-tight">Marriage Bonds</h2>
+                                <h2 className="text-xl font-black text-gray-900 tracking-tight">Bond Certificates</h2>
                             </div>
 
                             {vowNFTs.length > 0 ? (
@@ -112,13 +106,13 @@ export default function GalleryPage() {
                                         const attrs = nft.metadata?.attributes || [];
                                         const partnerA = attrs.find((a: any) => a.trait_type === 'partnerA')?.value;
                                         const partnerB = attrs.find((a: any) => a.trait_type === 'partnerB')?.value;
-                                        const marriageDate = attrs.find((a: any) => a.trait_type === 'marriageDate')?.value;
-                                        const marriageId = attrs.find((a: any) => a.trait_type === 'marriageId')?.value;
+                                        const bondDate = attrs.find((a: any) => a.trait_type === 'bondDate' || a.trait_type === 'marriageDate')?.value;
+                                        const bondId = attrs.find((a: any) => a.trait_type === 'bondId' || a.trait_type === 'marriageId')?.value;
 
                                         // Format date if available
                                         let formattedDate = '';
-                                        if (marriageDate) {
-                                            const date = new Date(parseInt(marriageDate) * 1000);
+                                        if (bondDate) {
+                                            const date = new Date(parseInt(bondDate) * 1000);
                                             formattedDate = date.toLocaleDateString('en-US', {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -141,14 +135,14 @@ export default function GalleryPage() {
                                             <div key={nft.tokenId.toString()} className="min-w-[85%] sm:min-w-[400px] snap-center relative">
                                                 <NFTCard
                                                     image={MOCK_IMAGE_URL}
-                                                    name={isLatest ? "Current Vow Certificate" : "Legacy Bond Evidence"}
+                                                    name={isLatest ? "Current Bond Certificate" : "Past Bond Evidence"}
                                                     description={customDescription}
                                                     tokenId={nft.tokenId.toString()}
                                                     customMetadata={{
                                                         partnerA,
                                                         partnerB,
-                                                        marriageDate: formattedDate,
-                                                        marriageId: marriageId?.substring(0, 12) + '...'
+                                                        bondDate: formattedDate,
+                                                        bondId: bondId ? bondId.substring(0, 12) + '...' : undefined
                                                     }}
                                                 />
                                             </div>
@@ -162,7 +156,7 @@ export default function GalleryPage() {
                                     </div>
                                     <div className="space-y-1">
                                         <p className="font-black text-gray-900">No Vows Yet</p>
-                                        <p className="text-xs text-gray-400 font-medium">Your first marriage will grant you<br />an eternal digital certificate.</p>
+                                        <p className="text-xs text-gray-400 font-medium">Your first bond will grant you<br />an eternal digital certificate.</p>
                                     </div>
                                 </div>
                             )}
@@ -263,7 +257,7 @@ export default function GalleryPage() {
                         <div className="text-center space-y-2">
                             <h3 className="text-2xl font-black text-gray-900 tracking-tight">Not Yet Available</h3>
                             <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                Milestone NFTs are unlocked on each anniversary of your marriage. Come back after your next anniversary to claim your reward!
+                                Milestone NFTs are unlocked on each anniversary of your bond. Come back after your next anniversary to claim your reward!
                             </p>
                         </div>
 
@@ -312,7 +306,7 @@ export default function GalleryPage() {
                                 onClick={() => {
                                     setShowSuccessModal(false);
                                     queryClient.invalidateQueries({ queryKey: ['milestoneNFTs'] });
-                                    queryClient.invalidateQueries({ queryKey: ['vowNFTs'] });
+                                    queryClient.invalidateQueries({ queryKey: ['bondNFTs'] });
                                 }}
                                 className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-gray-900 hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
                             >

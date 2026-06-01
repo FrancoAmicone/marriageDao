@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Home | HumanBond",
-  description: "Create or accept a marriage proposal on Worldchain. Build your eternal bond.",
+  description: "Create or accept a bond proposal on Worldchain.",
 };
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {

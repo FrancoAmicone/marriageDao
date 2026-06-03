@@ -58,5 +58,6 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await res.json().catch(() => ({}));
+    console.log('[notify] World API response:', res.status, JSON.stringify(data));
     return NextResponse.json(data, { status: res.ok ? 200 : 502 });
 }

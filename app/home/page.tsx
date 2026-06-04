@@ -378,7 +378,7 @@ export default function HomePage() {
             )}
           </div>
         ) : (
-          <div className="w-full max-w-lg mx-auto">
+          <div className="w-full max-w-lg mx-auto space-y-4">
             {dashboard && isConnected && (
               <MarriageDashboard
                 dashboard={dashboard}
@@ -387,6 +387,15 @@ export default function HomePage() {
                 dissolutionRequest={dissolutionRequest}
                 isMarriageLoading={isMarriageLoading}
               />
+            )}
+            {notifStatus === 'not_granted' && (
+              <button
+                onClick={requestPermission}
+                className="w-full flex items-center justify-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors py-2"
+              >
+                <Bell size={12} />
+                <span>Enable notifications</span>
+              </button>
             )}
           </div>
         )}

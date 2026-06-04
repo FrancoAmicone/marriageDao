@@ -122,7 +122,9 @@ export function MarriageDashboard({
         localDissolutionRequested ||
         dissolutionRequest?.requester?.toLowerCase() === walletAddress?.toLowerCase()
     );
-    const requestedAt = isDissolutionPending ? Number(dissolutionRequest!.requestedAt) : 0;
+    const requestedAt = isDissolutionPending
+        ? (dissolutionRequest?.requestedAt ? Number(dissolutionRequest.requestedAt) : Math.floor(Date.now() / 1000))
+        : 0;
     const executeAvailableAt = requestedAt + dissolutionDelaySeconds;
     const canExecute = isDissolutionPending && Date.now() / 1000 >= executeAvailableAt;
 

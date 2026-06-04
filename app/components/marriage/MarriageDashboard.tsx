@@ -53,6 +53,8 @@ export function MarriageDashboard({
     useEffect(() => { setIsWorldApp(isInWorldApp()) }, [])
 
     const [dissolutionTxState, setDissolutionTxState] = useState<DissolutionTxState>("idle");
+    const [lastDissolutionAction, setLastDissolutionAction] = useState<'request' | 'cancel' | 'execute' | null>(null);
+    const [localDissolutionRequested, setLocalDissolutionRequested] = useState(false);
     const [claimState, setClaimState] = useState<ClaimState>("idle");
     const [error, setError] = useState<string | null>(null);
     const [claimError, setClaimError] = useState<string | null>(null);
@@ -113,9 +115,11 @@ export function MarriageDashboard({
 
     // Dissolution helpers
     const dissolutionDelaySeconds = 3 * 24 * 60 * 60; // 3 days default
-    const isDissolutionPending = dissolutionRequest?.active ?? false;
-    const isRequester = isDissolutionPending &&
-        dissolutionRequest?.requester?.toLowerCase() === walletAddress?.toLowerCase();
+    const isDissolutionPending = (dissolutionRequest?.active ?? false) || localDissolutionRequested;
+    const isRequester = isDissolutionPending && (
+        localDissolutionRequested ||
+        dissolutionRequest?.requester?.toLowerCase() === walletAddress?.toLowerCase()
+    );
     const requestedAt = isDissolutionPending ? Number(dissolutionRequest!.requestedAt) : 0;
     const executeAvailableAt = requestedAt + dissolutionDelaySeconds;
     const canExecute = isDissolutionPending && Date.now() / 1000 >= executeAvailableAt;
@@ -187,6 +191,8 @@ export function MarriageDashboard({
             if (finalPayload.status === "error") throw new Error("Transaction failed");
 
             setDissolutionTxState("success");
+            setLastDissolutionAction('request');
+            setLocalDissolutionRequested(true);
             if (onRefresh) onRefresh();
             sendNotification(dashboard.partner, 'dissolution_requested');
         } catch (err) {
@@ -213,6 +219,8 @@ export function MarriageDashboard({
             if (finalPayload.status === "error") throw new Error("Transaction failed");
 
             setDissolutionTxState("idle");
+            setLastDissolutionAction('cancel');
+            setLocalDissolutionRequested(false);
             setShowConfirm(false);
             if (onRefresh) onRefresh();
         } catch (err) {
@@ -239,6 +247,7 @@ export function MarriageDashboard({
             if (finalPayload.status === "error") throw new Error("Transaction failed");
 
             setDissolutionTxState("success");
+            setLastDissolutionAction('execute');
         } catch (err) {
             setDissolutionTxState("error");
             setError(err instanceof Error ? err.message : "Failed to execute dissolution");
@@ -590,9 +599,11 @@ export function MarriageDashboard({
                                 <>
                                     <h3 className="text-2xl font-black text-gray-900 tracking-tight">Done</h3>
                                     <p className="text-sm text-emerald-600 font-bold">
-                                        {isDissolutionPending && canExecute
+                                        {lastDissolutionAction === 'execute'
                                             ? "Bond dissolved. Pending yield distributed."
-                                            : "Dissolution request cancelled."}
+                                            : lastDissolutionAction === 'cancel'
+                                            ? "Dissolution request cancelled."
+                                            : "Request sent. 3-day waiting period started."}
                                     </p>
                                 </>
                             ) : isDissolutionPending && isRequester && canExecute ? (

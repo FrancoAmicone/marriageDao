@@ -55,6 +55,7 @@ export function MarriageDashboard({
     const [dissolutionTxState, setDissolutionTxState] = useState<DissolutionTxState>("idle");
     const [lastDissolutionAction, setLastDissolutionAction] = useState<'request' | 'cancel' | 'execute' | null>(null);
     const [localDissolutionRequested, setLocalDissolutionRequested] = useState(false);
+    const [localDissolutionCancelled, setLocalDissolutionCancelled] = useState(false);
     const [claimState, setClaimState] = useState<ClaimState>("idle");
     const [error, setError] = useState<string | null>(null);
     const [claimError, setClaimError] = useState<string | null>(null);
@@ -115,7 +116,8 @@ export function MarriageDashboard({
 
     // Dissolution helpers
     const dissolutionDelaySeconds = 3 * 24 * 60 * 60; // 3 days default
-    const isDissolutionPending = (dissolutionRequest?.active ?? false) || localDissolutionRequested;
+    const isDissolutionPending = !localDissolutionCancelled &&
+        ((dissolutionRequest?.active ?? false) || localDissolutionRequested);
     const isRequester = isDissolutionPending && (
         localDissolutionRequested ||
         dissolutionRequest?.requester?.toLowerCase() === walletAddress?.toLowerCase()
@@ -221,8 +223,10 @@ export function MarriageDashboard({
             setDissolutionTxState("idle");
             setLastDissolutionAction('cancel');
             setLocalDissolutionRequested(false);
+            setLocalDissolutionCancelled(true);
             setShowConfirm(false);
             if (onRefresh) onRefresh();
+            sendNotification(dashboard.partner, 'dissolution_cancelled');
         } catch (err) {
             setDissolutionTxState("error");
             setError(err instanceof Error ? err.message : "Failed to cancel dissolution");
@@ -248,6 +252,7 @@ export function MarriageDashboard({
 
             setDissolutionTxState("success");
             setLastDissolutionAction('execute');
+            sendNotification(dashboard.partner, 'dissolution_executed');
         } catch (err) {
             setDissolutionTxState("error");
             setError(err instanceof Error ? err.message : "Failed to execute dissolution");

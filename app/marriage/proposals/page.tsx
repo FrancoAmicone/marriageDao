@@ -128,6 +128,7 @@ function ProposalDetailCard({
 
             setCardState("success_reject");
             onSuccess();
+            sendNotification(proposal.proposer, 'proposal_rejected');
         } catch (err) {
             setCardState("error");
             setError(err instanceof Error ? err.message : "Failed to reject proposal");
@@ -275,6 +276,16 @@ function ProposalDetailCard({
 export default function ProposalsPage() {
     const router = useRouter();
     const { incomingProposals, isLoading, refetch } = useProposals();
+    const [handledProposers, setHandledProposers] = useState<Set<string>>(new Set());
+
+    const visibleProposals = incomingProposals.filter(
+        p => !handledProposers.has(p.proposer.toLowerCase())
+    );
+
+    const handleProposalHandled = (proposer: string) => {
+        setHandledProposers(prev => new Set([...prev, proposer.toLowerCase()]));
+        refetch();
+    };
 
     return (
         <main className="min-h-screen bg-[#E8E8E8] pb-24">
@@ -300,7 +311,7 @@ export default function ProposalsPage() {
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-black" />
                         <p className="text-sm text-gray-500 font-medium">Loading proposals...</p>
                     </div>
-                ) : incomingProposals.length === 0 ? (
+                ) : visibleProposals.length === 0 ? (
                     <div className="p-12 bg-white rounded-[2rem] border border-gray-100 shadow-sm text-center space-y-4 animate-in fade-in duration-500">
                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
                             <Users size={32} className="text-gray-200" />
@@ -313,11 +324,11 @@ export default function ProposalsPage() {
                         </div>
                     </div>
                 ) : (
-                    incomingProposals.map((proposal, index) => (
+                    visibleProposals.map((proposal, index) => (
                         <ProposalDetailCard
                             key={`${proposal.proposer}-${index}`}
                             proposal={proposal}
-                            onSuccess={refetch}
+                            onSuccess={() => handleProposalHandled(proposal.proposer)}
                         />
                     ))
                 )}

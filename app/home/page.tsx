@@ -88,6 +88,7 @@ export default function HomePage() {
   const [showCancelProposalConfirm, setShowCancelProposalConfirm] = useState(false);
   const [cancelProposalState, setCancelProposalState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [cancelProposalError, setCancelProposalError] = useState<string | null>(null);
+  const [localProposalCancelled, setLocalProposalCancelled] = useState(false);
 
   // Resolve outgoing partner username — only fires when there's a pending proposal
   const { profile: pendingPartnerProfile, isLoading: isPendingPartnerLoading } = useWorldProfile(
@@ -115,6 +116,7 @@ export default function HomePage() {
       if (finalPayload.status === "error") throw new Error("Transaction failed");
 
       setCancelProposalState("success");
+      setLocalProposalCancelled(true);
       refetch();
       refetchProposals();
     } catch (err) {
@@ -138,6 +140,7 @@ export default function HomePage() {
   // Get marriage status from contract
   const isBonded = isConnected && (dashboard?.isBonded ?? false);
   const hasIncomingProposals = isConnected && incomingProposals.length > 0;
+  const effectiveHasPendingProposal = hasPendingProposal && !localProposalCancelled;
 
   /**
    * Check if user is verified before showing content
@@ -202,7 +205,7 @@ export default function HomePage() {
             )}
 
             {/* Outgoing Pending Proposal Alert */}
-            {hasPendingProposal && outgoingProposal && (
+            {effectiveHasPendingProposal && outgoingProposal && (
               <div className="w-full bg-[#1A1A1A] rounded-[2.5rem] p-8 space-y-6 shadow-2xl relative overflow-hidden animate-in zoom-in duration-500">
                 {/* Decoration */}
                 <div className="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 blur-[50px]" />
@@ -281,7 +284,7 @@ export default function HomePage() {
             {/* Hero Section */}
             <div className="space-y-4">
               <h1 className="text-5xl md:text-7xl font-black text-gray-900 tracking-tighter leading-[0.9] flex flex-col">
-                {hasPendingProposal ? (
+                {effectiveHasPendingProposal ? (
                   <span className="text-gray-9As00">Shared Destiny.</span>
                 ) : hasIncomingProposals ? (
                   <span className="text-rose-500">Your Turn.</span>
@@ -306,9 +309,9 @@ export default function HomePage() {
             {/* Main Action Buttons */}
             {isConnected ? (
               <div className="w-full flex flex-col gap-4">
-                {hasPendingProposal || isCooldownActive ? (
+                {effectiveHasPendingProposal || isCooldownActive ? (
                   <div className="w-full px-8 py-5 rounded-2xl bg-gray-100 text-gray-400 text-xs font-black uppercase tracking-[0.2em] cursor-not-allowed border border-gray-200 text-center">
-                    {hasPendingProposal ? "Proposal in Progress" : "Cooldown Active"}
+                    {effectiveHasPendingProposal ? "Proposal in Progress" : "Cooldown Active"}
                   </div>
                 ) : (
                   <Link

@@ -1,4 +1,10 @@
-export type NotificationType = 'dissolution_requested' | 'proposal_received' | 'proposal_accepted';
+export type NotificationType =
+    | 'dissolution_requested'
+    | 'dissolution_cancelled'
+    | 'dissolution_executed'
+    | 'proposal_received'
+    | 'proposal_accepted'
+    | 'proposal_rejected';
 
 export async function sendNotification(walletAddress: string, type: NotificationType): Promise<void> {
     try {

@@ -282,9 +282,19 @@ export default function ProposalsPage() {
         p => !handledProposers.has(p.proposer.toLowerCase())
     );
 
+    // Clean up handled set once on-chain data confirms the proposals are gone
+    useEffect(() => {
+        if (handledProposers.size === 0) return;
+        const currentProposers = new Set(incomingProposals.map(p => p.proposer.toLowerCase()));
+        setHandledProposers(prev => {
+            const stillNeeded = new Set([...prev].filter(p => currentProposers.has(p)));
+            return stillNeeded.size < prev.size ? stillNeeded : prev;
+        });
+    }, [incomingProposals]);
+
     const handleProposalHandled = (proposer: string) => {
         setHandledProposers(prev => new Set([...prev, proposer.toLowerCase()]));
-        refetch();
+        setTimeout(() => refetch(), 2000);
     };
 
     return (

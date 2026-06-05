@@ -95,6 +95,13 @@ export default function HomePage() {
     outgoingProposal?.proposed ?? null
   );
 
+  // Clear optimistic cancel flag once on-chain confirms no pending proposal
+  useEffect(() => {
+    if (!hasPendingProposal && localProposalCancelled) {
+      setLocalProposalCancelled(false);
+    }
+  }, [hasPendingProposal, localProposalCancelled]);
+
   // Detect World App on client to conditionally show chat buttons
   const [isWorldApp, setIsWorldApp] = useState(false);
   useEffect(() => { setIsWorldApp(isInWorldApp()) }, []);
@@ -117,8 +124,7 @@ export default function HomePage() {
 
       setCancelProposalState("success");
       setLocalProposalCancelled(true);
-      refetch();
-      refetchProposals();
+      setTimeout(() => { refetch(); refetchProposals(); }, 2000);
     } catch (err) {
       setCancelProposalState("error");
       setCancelProposalError(err instanceof Error ? err.message : "Failed to cancel proposal");

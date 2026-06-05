@@ -69,6 +69,19 @@ export function MarriageDashboard({
     const dissolutionRequest = propsDissolutionRequest ?? internalDissolutionRequest;
     const isMarriageLoading = propsIsMarriageLoading ?? internalIsMarriageLoading;
 
+    // Once on-chain data catches up, clear local optimistic flags
+    useEffect(() => {
+        if (dissolutionRequest?.active && localDissolutionRequested) {
+            setLocalDissolutionRequested(false);
+        }
+    }, [dissolutionRequest?.active, localDissolutionRequested]);
+
+    useEffect(() => {
+        if (!dissolutionRequest?.active && localDissolutionCancelled) {
+            setLocalDissolutionCancelled(false);
+        }
+    }, [dissolutionRequest?.active, localDissolutionCancelled]);
+
     const [interpolatedYield, setInterpolatedYield] = useState<number>(0);
 
     const marriageStats = useMemo(() => {
@@ -167,7 +180,7 @@ export function MarriageDashboard({
             if (finalPayload.status === "error") throw new Error("Claim transaction failed");
 
             setClaimState("success");
-            if (onRefresh) onRefresh();
+            setTimeout(() => onRefresh?.(), 2000);
         } catch (err) {
             setClaimState("error");
             setClaimError(err instanceof Error ? err.message : "Failed to claim tokens");
@@ -197,7 +210,7 @@ export function MarriageDashboard({
             setDissolutionTxState("success");
             setLastDissolutionAction('request');
             setLocalDissolutionRequested(true);
-            if (onRefresh) onRefresh();
+            setTimeout(() => onRefresh?.(), 2000);
             sendNotification(dashboard.partner, 'dissolution_requested');
         } catch (err) {
             setDissolutionTxState("error");
@@ -227,7 +240,7 @@ export function MarriageDashboard({
             setLocalDissolutionRequested(false);
             setLocalDissolutionCancelled(true);
             setShowConfirm(false);
-            if (onRefresh) onRefresh();
+            setTimeout(() => onRefresh?.(), 2000);
             sendNotification(dashboard.partner, 'dissolution_cancelled');
         } catch (err) {
             setDissolutionTxState("error");
@@ -649,7 +662,7 @@ export function MarriageDashboard({
                                     onClick={() => {
                                         setShowConfirm(false);
                                         setDissolutionTxState("idle");
-                                        if (onRefresh) onRefresh();
+                                        setTimeout(() => onRefresh?.(), 2000);
                                     }}
                                     className="w-full py-4 px-6 rounded-2xl text-sm font-black text-white bg-gray-900 hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-200"
                                 >
